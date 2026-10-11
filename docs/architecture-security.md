@@ -1,6 +1,6 @@
 # Architecture and security handover
 
-**Product:** dolphincreation.com (temporary brand)  
+**Product:** DnyanGanga Knowledge Hub  
 **Prepared:** 11 October 2026  
 **Posture:** private test release; use fictional data.  
 **Target:** applicable OWASP ASVS 5.0.0 Level 2, including relevant Level 1 requirements. Coverage is partial; no certification or compliance claim.
@@ -299,5 +299,7 @@ No enabled core feature needs AI/message/payment keys. D1 is required and its ab
 ### Local transport limitation
 
 A Vinext development bridge/Miniflare keep-alive issue was observed after a framework-level foreign-Origin rejection: the following reused-connection request could fail. The 25-check smoke test uses Connection: close to isolate this local transport behavior. Consuming bounded bodies before application feature-gate responses repaired the analogous application-path unread-stream problem. This does not establish that the framework-level issue is absent from a built or hosted deployment; verify rejection followed by a normal request on reused connections during release tests.
+
+
 
 

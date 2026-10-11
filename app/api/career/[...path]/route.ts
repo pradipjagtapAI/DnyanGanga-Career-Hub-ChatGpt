@@ -25,7 +25,7 @@ async function handle(request: Request) {
     const store = new CareerStore(user, env.DB);
     await store.ensureAccount();
     if (!mutation && path.join("/") === "state") return json(await store.state());
-    if (!mutation && path.join("/") === "export") return json(await store.export(), 200, { "Content-Disposition": "attachment; filename=dolphin-career-export.json" });
+    if (!mutation && path.join("/") === "export") return json(await store.export(), 200, { "Content-Disposition": "attachment; filename=dnyanganga-career-export.json" });
     if (!mutation && path[0] === "resumes" && path.length === 3 && path[2] === "download") {
       const resume = await store.ownedResume(path[1]);
       return new Response(resume.content, { headers: { ...privateHeaders, "Content-Type": "text/plain; charset=utf-8", "Content-Disposition": `attachment; filename=resume-v${resume.version}.txt` } });
@@ -65,3 +65,4 @@ export const POST = handle;
 export const PUT = handle;
 export const PATCH = handle;
 export const DELETE = handle;
+

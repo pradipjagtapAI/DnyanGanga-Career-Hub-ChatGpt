@@ -1,6 +1,6 @@
-# dolphincreation.com — career workspace
+# DnyanGanga Knowledge Hub — career workspace
 
-A light-theme career platform with a public website, interactive demonstration, and signed-in workspace backed by a relational database. The brand name is temporary. No reference website was used, as requested.
+A light-theme career platform with a public website, interactive demonstration, and signed-in workspace backed by a relational database. Tagline: Learn Smarter, Build Faster, Grow Further. No reference website was used, as requested.
 
 This is a private test release, not a completed public production service. Live job feeds, document upload processing, external AI, voice recording, scheduled-message delivery, public sharing, administration, and payments stay disabled until their secure integrations are implemented, configured, and tested. Adding a key alone does not activate them.
 
@@ -12,7 +12,7 @@ This is a private test release, not a completed public production service. Live 
 - Profile/resume revision references and owned data export. The tested workspace-deletion routine stays unavailable online until trusted fresh authentication is supported.
 - Clear unavailable states for integrations requiring credentials, approvals, or security capabilities.
 
-**Sign in with ChatGPT** is supplied by Sites. The app does not create separate dolphincreation.com password accounts, independently verify contact destinations, enforce application-level MFA, or supply its own recovery system. Those requested capabilities require platform support or a reviewed identity design. Career-workspace deletion does not delete a ChatGPT account.
+**Sign in with ChatGPT** is supplied by Sites. The app does not create separate DnyanGanga password accounts, independently verify contact destinations, enforce application-level MFA, or supply its own recovery system. Those requested capabilities require platform support or a reviewed identity design. Career-workspace deletion does not delete a ChatGPT account.
 
 ## Handover
 
@@ -120,4 +120,6 @@ This is a local launcher workaround. Other hosts should use their own installed 
 
 ### Launch recommendation
 
-Use the private review build with fictional data. Complete the disabled integrations, MFA/recent-auth support, document worker, notification queue, provider rights, remaining build-tool vulnerability review, backup drills, and independent security review before real personal-data collection or live payments. The domain `dolphincreation.com` has not been attached; DNS ownership and custom-domain configuration are separate steps.
+Use the private review build with fictional data. Complete the disabled integrations, MFA/recent-auth support, document worker, notification queue, provider rights, remaining build-tool vulnerability review, backup drills, and independent security review before real personal-data collection or live payments. A custom domain has not been attached; DNS ownership and custom-domain configuration are separate steps.
+
+

@@ -13,3 +13,24 @@ label{display:flex;flex-direction:column;gap:7px;font-size:12px;font-weight:500;
 
 
 .trust-section>svg{margin-left:auto;margin-right:auto}.nav-item{font-size:13px}.job-card-title button{font-size:14px}.panel-heading h2{font-size:15px}.workspace .pill{font-size:10px}.hero-notes{font-size:11px}
+/* Shared DnyanGanga lockup. The display window preserves the supplied image. */
+.public-header{height:110px}
+.brand{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;width:252px;flex-shrink:0;letter-spacing:normal;line-height:1.3}
+.brand-art{position:relative;display:block;width:252px;height:67px;overflow:hidden;border-radius:4px}
+.brand-art img{position:absolute;display:block;width:274px;height:auto;max-width:none;left:-10px;top:-56px}
+.brand-tagline{display:block;width:100%;font-family:var(--sans);font-size:11px;font-weight:550;line-height:1.4;text-align:center;color:#475569;letter-spacing:0;white-space:normal}
+.sidebar .brand{width:210px;padding:0;gap:5px}
+.sidebar .brand-art{width:210px;height:59px}
+.sidebar .brand-art img{width:228px;left:-9px;top:-47px}
+.sidebar .brand-tagline{font-size:9px;max-width:200px;line-height:1.5}
+.footer{flex-wrap:wrap}
+.footer .brand{width:230px}
+.footer .brand-art{width:230px;height:63px}
+.footer .brand-art img{width:250px;left:-9px;top:-51px}
+.preview-mark{font-size:16px;color:#006348;letter-spacing:-1px}
+@media(max-width:1100px){.public-header nav{gap:18px}.public-header{padding-left:30px;padding-right:30px}.sidebar .brand{width:194px}.sidebar .brand-art{width:194px;height:54px}.sidebar .brand-art img{width:211px;left:-8px;top:-43px}.sidebar .brand-tagline{font-size:8.5px}}
+@media(max-width:900px){.public-header .brand{width:230px}.public-header .brand-art{width:230px;height:63px}.public-header .brand-art img{width:250px;left:-9px;top:-51px}}
+@media(max-width:640px){.public-header{height:96px;padding:0 18px;gap:10px}.public-header .brand{width:216px;gap:4px}.public-header .brand-art{width:216px;height:58px}.public-header .brand-art img{width:235px;left:-9px;top:-48px}.public-header .brand-tagline{font-size:10px;max-width:208px}.header-actions{gap:10px}.sidebar .brand{width:194px}.footer .brand{width:230px}.footer{gap:20px}}
+@media(max-width:360px){.public-header{padding:0 12px}.public-header .brand{width:166px}.public-header .brand-art{width:166px;height:47px}.public-header .brand-art img{width:181px;left:-7px;top:-37px}.public-header .brand-tagline{font-size:9px;max-width:164px}}
+
+
