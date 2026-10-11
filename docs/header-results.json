@@ -1,0 +1,6 @@
+{
+  "passed": true,
+  "checks": 7,
+  "scope": "Built Worker on loopback; HSTS applies only to HTTPS and was not locally verified",
+  "csp": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data: blob:; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+}

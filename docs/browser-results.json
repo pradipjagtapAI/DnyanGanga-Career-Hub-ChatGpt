@@ -1,0 +1,17 @@
+{
+  "passed": true,
+  "viewports": [
+    "1440x1100",
+    "390x844"
+  ],
+  "checks": [
+    "Home/dashboard rendered",
+    "Demo resume saved",
+    "Job search filtered",
+    "Tracker list viewed",
+    "Mobile menu and profile saved",
+    "Notification preferences saved",
+    "No horizontal overflow"
+  ],
+  "pageErrors": []
+}
