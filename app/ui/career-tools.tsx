@@ -105,6 +105,7 @@ export function MatchExplanation({ job }: {job:CareerJob}) {
   const evidence = job.skillEvidence || [];
   return (
     <section className="match-explanation">
+      {job.opportunityPriority&&<section className="tool-message"><h3>Opportunity priority: {job.opportunityPriority.level}</h3><p>{job.opportunityPriority.method}</p><ul>{job.opportunityPriority.reasons.map(reason=><li key={reason}>{reason}</li>)}</ul>{job.opportunityPriority.unknowns.length>0&&<p>Unknown: {job.opportunityPriority.unknowns.join(" · ")}</p>}<p>Priority is separate from profile fit and never overrides mandatory criteria.</p></section>}
       <h3>Why it matches</h3>
       {job.verification?.duplicateOf ? <p className="tool-message">This listing shares an application destination with another saved listing and is excluded from duplicate preparation.</p> : null}
       {job.verification?.warnings.length ? <div className="tool-message" role="status"><b>Listing details to review</b><ul>{job.verification.warnings.map(warning=><li key={warning}>{warning}</li>)}</ul></div> : null}
@@ -575,13 +576,13 @@ export function DocumentManager({
         },
         body: file,
       });
-      const result = await response.json() as ApiResponse;
+      const result = await response.json() as ApiResponse & {projection?:{warnings?:string[]};state?:ViewState};
       if (!response.ok)
         throw new Error(result.error || "The document could not be processed.");
       await reload();
-      notify(
-        "Upload processed. Review extracted information before saving a version.",
-      );
+      const uploaded=result.state?.documents?.find(item=>item.id===result.id);
+      const warnings=result.projection?.warnings??[];
+      notify(uploaded&&!["review_required","confirmed"].includes(uploaded.status)?"The file is private, but processing did not complete. Review its status and use manual entry if needed.":warnings.length?warnings.join(" "):"Upload processed. Review extracted information before saving a version.");
     } catch (e) {
       setError(errorMessage(e));
     } finally {
@@ -1304,23 +1305,13 @@ export function AssistantTools({
                 <pre className="interview-answer">
                   {item.text || ""}
                 </pre>
-                <button
-                  className="btn outline small"
-                  onClick={() => {
-                    const url = URL.createObjectURL(
-                      new Blob([item.text || ""], {
-                        type: "text/plain",
-                      }),
-                    );
-                    const link = document.createElement("a");
-                    link.href = url;
-                    link.download = "cover-letter.txt";
-                    link.click();
-                    URL.revokeObjectURL(url);
-                  }}
-                >
-                  Download text
-                </button>
+                {(["txt","pdf","docx"] as const).map(format=><button key={format} className="btn outline small" disabled={busy||demo} onClick={async()=>{
+                  setBusy(true);setError("");try {
+                    const response=await fetch(`/api/career/generated-documents/${item.id}/download?format=${format}`,{cache:"no-store"});
+                    if(!response.ok){const value=await response.json() as {error?:string};throw new Error(value.error||"This cover letter could not be exported.");}
+                    const url=URL.createObjectURL(await response.blob()),link=document.createElement("a");link.href=url;link.download=`cover-letter.${format}`;link.click();setTimeout(()=>URL.revokeObjectURL(url),1500);
+                  }catch(error){setError(errorMessage(error));}finally{setBusy(false);}
+                }}>{format==="txt"?"Download text":"Download "+format.toUpperCase()}</button>)}
                 <button
                   className="text-link"
                   disabled={busy || demo}

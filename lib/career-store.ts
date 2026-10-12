@@ -2,7 +2,7 @@ import { CareerError, INTEGRATIONS, boolean, defaultNotifications, defaultPrefer
 import type { ManualJob, NotificationSettings, Preferences, Profile } from "./career-core";
 
 type AccountRow = { user_id: string; profile: string; preferences: string; notifications: string; notification_revision: number; revision: number; resume_counter: number; active_resume_id: string | null; draft: string | null; draft_revision: number; created_at: string; updated_at: string };
-type ResumeRow = { id: string; user_id: string; version: number; title: string; target_role: string; content: string; source: string; parent_id: string | null; document_id: string | null; profile_revision: number; created_at: string };
+type ResumeRow = { id: string; user_id: string; version: number; title: string; target_role: string; content: string; source: string; parent_id: string | null; document_id: string | null; profile_revision: number; created_at: string; metadata?: string; archived?: number };
 type JobRow = { id: string; user_id: string; data: string; source: string; last_checked_at: string | null; created_at: string };
 type ApplicationRow = { id: string; user_id: string; job_id: string; status: string; notes: string; reminder_at: string | null; resume_id: string | null; submitted_at: string | null; created_at: string; updated_at: string };
 type TaskRow = { id: string; title: string; completed: number; created_at: string };
@@ -43,11 +43,11 @@ export class CareerStore {
       this.query("SELECT * FROM career_applications WHERE user_id=? ORDER BY updated_at DESC", this.identity.userId).all<ApplicationRow>(),
       this.query("SELECT * FROM career_tasks WHERE user_id=? ORDER BY created_at DESC", this.identity.userId).all<TaskRow>(),
     ]);
-    const profile = JSON.parse(account.profile) as Profile;
+    const profile = { ...defaultProfile(this.identity.email), ...JSON.parse(account.profile) } as Profile;
     // Account contact remains sourced from verified platform identity.
     profile.email = this.identity.email;
     const preferences = { ...defaultPreferences(), ...JSON.parse(account.preferences) } as Preferences;
-    const resumeList = resumes.results.map((row) => ({ id: row.id, version: row.version, title: row.title, targetRole: row.target_role, text: row.content, source: row.source, parentId: row.parent_id, documentId: row.document_id, profileRevision: row.profile_revision, createdAt: row.created_at, active: row.id === account.active_resume_id }));
+    const resumeList = resumes.results.map((row) => ({ id: row.id, version: row.version, title: row.title, targetRole: row.target_role, text: row.content, source: row.source, parentId: row.parent_id, documentId: row.document_id, profileRevision: row.profile_revision, createdAt: row.created_at, active: row.id === account.active_resume_id, metadata: row.metadata ? JSON.parse(row.metadata) as Record<string, unknown> : {}, archived: row.archived === 1 }));
     const active = resumeList.find((row) => row.active);
     const jobList = jobs.results.map((row) => {
       const data = JSON.parse(row.data) as ManualJob; const match = matchJob(data, profile, preferences, active?.text);
@@ -74,7 +74,12 @@ export class CareerStore {
     if (!result.meta.changes) throw new CareerError(409, "REVISION_CONFLICT", "Your profile changed in another tab. Reload before saving.");
     await this.audit("profile.updated").run();
   }
-  async saveResume(value: unknown, restored?: ResumeRow) {
+  async saveResume(value: unknown, restored?: ResumeRow, presentation?: { metadata: string; parentId: string | null }) {
+    if (presentation) {
+      if (presentation.parentId) await this.ownedResume(presentation.parentId);
+      if (presentation.metadata.length > 12000) throw new CareerError(400, "INVALID_METADATA", "Resume settings are too long.");
+      try { object(JSON.parse(presentation.metadata)); } catch { throw new CareerError(400, "INVALID_METADATA", "Resume settings must be a JSON object."); }
+    }
     const resume = restored ? { title: `${restored.title} (restored)`.slice(0, 160), targetRole: restored.target_role, text: restored.content, source: "restored" } : validateResume(value);
     const count = await this.query("SELECT COUNT(*) AS count FROM career_resume_versions WHERE user_id=?", this.identity.userId).first<{ count: number }>();
     if ((count?.count ?? 0) >= 100) throw new CareerError(409, "QUOTA_REACHED", "The workspace supports 100 resume versions. Delete unwanted versions before saving another.");
@@ -82,7 +87,7 @@ export class CareerStore {
     // D1 batch is atomic: monotonic per-owner sequence and inserted version stay consistent.
     const saved = await this.db.batch([
       this.query("UPDATE career_accounts SET resume_counter=resume_counter+1, updated_at=? WHERE user_id=? AND (SELECT COUNT(*) FROM career_resume_versions WHERE user_id=?)<100", now, this.identity.userId, this.identity.userId),
-      this.query("INSERT INTO career_resume_versions (id,user_id,version,title,target_role,content,source,parent_id,profile_revision,created_at) SELECT ?,user_id,resume_counter,?,?,?,?,?,revision,? FROM career_accounts WHERE user_id=? AND (SELECT COUNT(*) FROM career_resume_versions WHERE user_id=?)<100", id, resume.title, resume.targetRole, resume.text, resume.source, restored?.id ?? null, now, this.identity.userId, this.identity.userId),
+      ...(presentation ? [this.query("INSERT INTO career_resume_versions (id,user_id,version,title,target_role,content,source,parent_id,profile_revision,created_at,metadata) SELECT ?,user_id,resume_counter,?,?,?,?,?,revision,?,? FROM career_accounts WHERE user_id=? AND (SELECT COUNT(*) FROM career_resume_versions WHERE user_id=?)<100", id, resume.title, resume.targetRole, resume.text, resume.source, presentation.parentId, now, presentation.metadata, this.identity.userId, this.identity.userId)] : [this.query("INSERT INTO career_resume_versions (id,user_id,version,title,target_role,content,source,parent_id,profile_revision,created_at) SELECT ?,user_id,resume_counter,?,?,?,?,?,revision,? FROM career_accounts WHERE user_id=? AND (SELECT COUNT(*) FROM career_resume_versions WHERE user_id=?)<100", id, resume.title, resume.targetRole, resume.text, resume.source, restored?.id ?? null, now, this.identity.userId, this.identity.userId)]),
       this.query("UPDATE career_accounts SET draft=NULL,draft_revision=draft_revision+1 WHERE user_id=? AND json_extract(draft,'$.text')=? AND json_extract(draft,'$.title')=? AND EXISTS(SELECT 1 FROM career_resume_versions WHERE id=? AND user_id=?)", this.identity.userId, resume.text, resume.title, id, this.identity.userId),
       this.query("INSERT INTO career_audit_events (id,user_id,action,entity_id,created_at) SELECT ?,?,?,?,? WHERE EXISTS(SELECT 1 FROM career_resume_versions WHERE id=? AND user_id=?)", crypto.randomUUID(), this.identity.userId, restored ? "resume.restored" : "resume.saved", id, now, id, this.identity.userId),
     ]);
@@ -107,11 +112,28 @@ export class CareerStore {
     return row;
   }
   async setActiveResume(id: string) {
-    await this.ownedResume(id);
-    await this.db.batch([
-      this.query("UPDATE career_accounts SET active_resume_id=?,updated_at=? WHERE user_id=? AND EXISTS(SELECT 1 FROM career_resume_versions WHERE id=? AND user_id=?)", id, this.now(), this.identity.userId, id, this.identity.userId),
-      this.audit("resume.active_selected", id),
+    const resume = await this.ownedResume(id);
+    if (resume.archived === 1) throw new CareerError(409, "RESUME_ARCHIVED", "Restore this version from the archive before selecting it as active.");
+    const result = await this.db.batch([
+      this.query("UPDATE career_accounts SET active_resume_id=?,updated_at=? WHERE user_id=? AND EXISTS(SELECT 1 FROM career_resume_versions WHERE id=? AND user_id=? AND archived=0)", id, this.now(), this.identity.userId, id, this.identity.userId),
+      this.query("INSERT INTO career_audit_events (id,user_id,action,entity_id,created_at) SELECT ?,?,?,?,? WHERE changes()>0", crypto.randomUUID(), this.identity.userId, "resume.active_selected", id, this.now()),
     ]);
+    if (!result[0].meta.changes) throw new CareerError(409, "RESUME_CONFLICT", "The resume changed before selection. Refresh and try again.");
+  }
+  async archiveResume(id: string, value: unknown) {
+    const input = object(value); keys(input, ["archived", "expectedArchived", "confirmed"]);
+    if (input.confirmed !== true) throw new CareerError(400, "REVIEW_REQUIRED", "Confirm the archive change.");
+    const archived = boolean(input.archived), expected = boolean(input.expectedArchived);
+    const resume = await this.ownedResume(id);
+    if ((resume.archived === 1) !== expected) throw new CareerError(409, "RESUME_CONFLICT", "The archive state changed. Refresh before trying again.");
+    if (archived && (await this.account()).active_resume_id === id) throw new CareerError(409, "ACTIVE_RESUME", "Select another active resume before archiving this version.");
+    const result = await this.db.batch([
+      this.query("UPDATE career_resume_versions SET archived=? WHERE id=? AND user_id=? AND archived=? AND (? !=1 OR NOT EXISTS(SELECT 1 FROM career_accounts WHERE user_id=? AND active_resume_id=?))", Number(archived), id, this.identity.userId, Number(expected), Number(archived), this.identity.userId, id),
+      this.query("UPDATE career_agent_settings SET revision=revision+1 WHERE user_id=? AND changes()>0", this.identity.userId),
+      this.query("UPDATE career_package_approvals SET status='invalidated' WHERE user_id=? AND status='approved' AND changes()>0", this.identity.userId),
+    ]);
+    if (!result[0].meta.changes) throw new CareerError(409, "RESUME_CONFLICT", "The resume selection changed. Refresh before archiving.");
+    await this.audit(archived ? "resume.archived" : "resume.unarchived", id).run();
   }
   async deleteResume(id: string, confirmActive=false) {
     await this.ownedResume(id);

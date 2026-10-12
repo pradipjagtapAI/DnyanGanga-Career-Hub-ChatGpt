@@ -39,9 +39,14 @@ import {
   Filter,
   Compass,
   LockKeyhole,
+  BookOpenCheck,
+  ContactRound,
+  FileCheck2,
 } from "lucide-react";
 import { Brand } from "./public";
 import { AgentCommandCenter } from "./agent-command-center";
+import { CareerGoals, SkillsLearning, RecruiterCRM, InterviewCalendar, PrivacySecurity, TodayActions } from "./career-platform-tools";
+import { ResumeToolkit } from "./resume-toolkit";
 import {
   SourceConnection,
   MatchExplanation,
@@ -54,17 +59,28 @@ const navigation = [
   ["overview", "Dashboard", LayoutDashboard],
   ["agents", "AI Agent Command Center", Compass],
   ["profile", "My Profile", UserRound],
+  ["goals", "Career Goals", Target],
+  ["vault", "Candidate Knowledge Vault", ShieldCheck],
   ["resumes", "My Resumes", FileText],
+  ["searches", "Job Searches", Search],
   ["jobs", "Job Matches", BriefcaseBusiness],
+  ["review", "Review Queue", FileCheck2],
   ["saved", "Saved Jobs", Bookmark],
   ["applications", "Application Tracker", Kanban],
   ["interview", "Interview Practice", MessagesSquare],
+  ["calendar", "Interview Calendar", CalendarDays],
   ["coach", "AI Career Assistant", Sparkles],
+  ["learning", "Skills & Learning", BookOpenCheck],
+  ["recruiters", "Recruiter CRM", ContactRound],
+  ["privacy", "Privacy & Security", LockKeyhole],
   ["insights", "Market Insights", ChartNoAxesCombined],
   ["notifications", "Alerts", Bell],
   ["settings", "Settings", Settings],
 ] as const;
 const statuses = [
+  "Needs Input",
+  "Ready",
+  "Failed",
   "Saved",
   "Preparing",
   "Needs Review",
@@ -796,7 +812,7 @@ export default function CareerWorkspace({
         <nav aria-label="Workspace">
           {navigation
             .filter(
-              (n) => !["notifications", "settings", "insights"].includes(n[0]),
+              (n) => !["notifications", "settings"].includes(n[0]),
             )
             .map(([v, label, Icon]) => (
               <button
@@ -869,6 +885,7 @@ export default function CareerWorkspace({
             <b>{navigation.find((n) => n[0] === view)?.[1]}</b>
           </div>
           <div className="workspace-header-right">
+            <button className="career-kill-switch" disabled={demo || busy || !state.agentic?.settings || state.agentic?.settings.pausedAll} onClick={async () => { const s=state.agentic.settings; if(await mutate("agents/settings","PUT",{mode:s.mode,pausedAll:true,pausedCategories:s.pausedCategories,expectedRevision:s.revision,maxJobsPerRun:s.maxJobsPerRun,maxPackagesPerRun:s.maxPackagesPerRun,schedule:{enabled:s.schedule.enabled,timeZone:s.schedule.timeZone,runTime:s.schedule.runTime}}))setToast("All AI agents paused. Your records remain available for review."); }}><ShieldCheck size={13}/>{state.agentic?.settings.pausedAll?"AI agents paused":"Pause all AI agents"}</button>
             <span className="private-label">
               <LockKeyhole size={13} /> Private workspace
             </span>
@@ -920,6 +937,12 @@ export default function CareerWorkspace({
           ) : (
             <>
               {view === "agents" && <AgentCommandCenter state={state.agentic} onState={setState} demo={demo} />}
+              {["vault","searches","review"].includes(view) && <AgentCommandCenter key={view} initialTab={view === "vault" ? "vault" : view === "searches" ? "searches" : "review"} state={state.agentic} onState={setState} demo={demo} />}
+              {view === "goals" && <CareerGoals state={state} demo={demo} onState={setState} onNavigate={go} />}
+              {view === "learning" && <SkillsLearning state={state} demo={demo} onState={setState} onNavigate={go} />}
+              {view === "recruiters" && <RecruiterCRM state={state} demo={demo} onState={setState} onNavigate={go} />}
+              {view === "calendar" && <InterviewCalendar state={state} demo={demo} onState={setState} onNavigate={go} />}
+              {view === "privacy" && <PrivacySecurity state={state} demo={demo} onState={setState} onNavigate={go} />}
               {view === "overview" && (
                 <>
                   <div className="page-heading">
@@ -943,6 +966,7 @@ export default function CareerWorkspace({
                       <ArrowUpRight size={15} />
                     </button>
                   </div>
+                  <TodayActions state={state} demo={demo} onState={setState} onNavigate={go} />
                   <div className="overview-stats">
                     {[
                       [
@@ -1412,7 +1436,7 @@ export default function CareerWorkspace({
                 <>
                   <PageHeading
                     eyebrow="PRESENT YOUR EXPERIENCE WITH CLARITY"
-                    title="My Resumes"
+                    title="Resume Studio"
                     text="Give every opportunity the right version of your story."
                     action={
                       <button
@@ -1430,6 +1454,7 @@ export default function CareerWorkspace({
                     notify={setToast}
                     onEdit={openEditor}
                   />
+                  {!editing && <ResumeToolkit state={state} demo={demo} onState={setState} onEdit={openEditor} />}
                   {editing ? (
                     <>
                       <div className="editor-toolbar">
@@ -1967,7 +1992,7 @@ export default function CareerWorkspace({
                 <>
                   <PageHeading
                     eyebrow="SMALL ACTIONS. MEANINGFUL DIRECTION."
-                    title="AI Career Assistant"
+                    title="Career Coach"
                     text="Make a practical plan for the professional you want to become."
                   />
                   <AssistantTools
@@ -2732,6 +2757,7 @@ function ProfileForm({ profile, preferences, tab, busy, save }: any) {
             {field("state", "State")}
             {field("country", "Country")}
             {field("currentRole", "Current / most recent role")}
+            {field("currentCompany", "Current company")}
             {field("totalExperience", "Total experience (years)", "number")}
             {field(
               "relevantExperience",
@@ -2739,6 +2765,7 @@ function ProfileForm({ profile, preferences, tab, busy, save }: any) {
               "number",
             )}
             {field("portfolio", "LinkedIn / portfolio URL", "url")}
+            {field("linkedin", "LinkedIn URL", "url")}
           </div>
           <label>
             Career summary
@@ -2750,6 +2777,7 @@ function ProfileForm({ profile, preferences, tab, busy, save }: any) {
             />
           </label>
           {list("skills", "Confirmed skills", true)}
+          {list("languages", "Languages", true)}
           {[
             ["workHistory", "Work history"],
             ["education", "Education"],
@@ -2782,6 +2810,7 @@ function ProfileForm({ profile, preferences, tab, busy, save }: any) {
             {list("targetRoles", "Target roles")}
             {list("industries", "Target industries")}
             {list("preferredCities", "Preferred cities")}
+            {list("preferredCountries", "Preferred countries")}
             {list(
               "employmentTypes",
               "Employment types (Full-time, Contract, etc.)",
@@ -2864,6 +2893,9 @@ function ProfileForm({ profile, preferences, tab, busy, save }: any) {
             {list("excludeCompanies", "Companies to exclude")}
             {list("excludeRoles", "Roles to exclude")}
             {list("excludeLocations", "Locations to exclude")}
+            {list("excludeIndustries", "Industries to exclude")}
+            <label>Joining availability<input value={pref.joiningAvailability ?? ""} maxLength={200} onChange={e=>setPref({...pref,joiningAvailability:e.target.value})}/></label>
+            <label>Travel preference<select value={pref.travelPreference ?? "unspecified"} onChange={e=>setPref({...pref,travelPreference:e.target.value})}><option value="unspecified">Flexible / not specified</option><option value="none">No travel</option><option value="occasional">Occasional travel</option><option value="frequent">Frequent travel</option></select></label>
           </div>
           <div className="preference-controls">
             {[
@@ -2871,6 +2903,12 @@ function ProfileForm({ profile, preferences, tab, busy, save }: any) {
               ["mandatoryLocation", "Preferred location is mandatory"],
               ["mandatoryWorkArrangement", "Work arrangement is mandatory"],
               ["mandatoryEmploymentType", "Employment type is mandatory"],
+              ["mandatoryCountry", "Preferred country is mandatory"],
+              ["mandatoryRole", "Target role is mandatory"],
+              ["mandatoryIndustry", "Target industry is mandatory"],
+              ["mandatorySkills", "Required skills must be confirmed"],
+              ["mandatoryExperience", "Required experience is mandatory"],
+              ["mandatoryQualifications", "Required qualifications must be confirmed"],
               [
                 "mandatorySalary",
                 "Salary minimum is mandatory (missing salary requires checking)",

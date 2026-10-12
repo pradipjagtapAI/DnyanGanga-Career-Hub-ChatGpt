@@ -1,0 +1,28 @@
+{
+  "passed": true,
+  "executedAt": "2026-10-12T15:44:47.930Z",
+  "checks": 12,
+  "checkDescriptions": [
+    "Career goal create/edit requires explicit confirmation and preserves global matching preferences",
+    "Learning task create/edit links an owned goal and records completion without inventing a profile skill",
+    "Recruiter contact create/edit and manual interaction history persist with a private unsent draft; no send action is exposed",
+    "Manual interview create/edit links owned contact/job/resume and converts 10:00 Asia/Kolkata to 04:30 UTC correctly",
+    "Campaign saves an exact resume, frequency and experience filter; pause/start/edit/archive persist through the real UI",
+    "Dedicated knowledge vault distinguishes verified, extracted, inferred and unknown facts; reusable answer accepts a shorter freshness deadline",
+    "Actual expanded registry renders dynamically; configurable preparation time persists across global pause and resume",
+    "Direct review and privacy screens explain unsubmitted packages, actual provider status/data-use records, private export, and disabled sensitive capabilities",
+    "Today actions counts scheduled interviews from owned manual records",
+    "Eight expanded screens have no page overflow at desktop 1440, tablet 768 and mobile 390 pixels; desktop/mobile evidence captured",
+    "Owned interview, recruiter with interaction, learning task and goal delete controls work through confirmed server requests",
+    "No browser page errors in the exercised local career journeys"
+  ],
+  "pageErrors": [],
+  "cleanupErrors": [],
+  "failure": null,
+  "scope": "Fixed synthetic loopback identity and actual local D1; no live AI, employer submission, email/WhatsApp/calendar sending or production identity tests.",
+  "cleanup": "Created goals, learning tasks, recruiter contacts/interactions, interviews, campaign, resume, job and reusable answer removed; original settings/profile/preferences preserved. Labelled synthetic immutable private history may remain locally.",
+  "screenshots": [
+    "outputs/platform-desktop.png",
+    "outputs/platform-mobile.png"
+  ]
+}

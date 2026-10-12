@@ -1,9 +1,9 @@
 {
   "passed": true,
-  "executedAt": "2026-10-12T14:57:26.930Z",
+  "executedAt": "2026-10-12T15:54:59.190Z",
   "checks": 16,
   "checkDescriptions": [
-    "Actual registry contains 17 specialists plus one orchestrator; default approval mode, no simulated activity",
+    "Actual registry contains 21 specialists plus one orchestrator; default approval mode, no simulated activity",
     "Saved search created and edited through real UI/API; mandatory profile preferences retained",
     "Saved search starts actual bounded workflow; Continue calls real queued work without falsely claiming completion while document category paused",
     "Pause all and Resume persist; category-specific pause survives both and global notice is visible",

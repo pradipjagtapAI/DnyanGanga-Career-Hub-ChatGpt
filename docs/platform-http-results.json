@@ -1,0 +1,27 @@
+{
+  "passed": true,
+  "checks": [
+    "Anonymous platform records fail closed",
+    "Platform state contains actual owned records",
+    "Prototype-name resource is rejected as404",
+    "Owned review flags reversed dates without modifying resume",
+    "Unreviewed formatted variant cannot be stored",
+    "Separate formatted variant preserves original and traceable parent",
+    "Formatting never changes selected active resume",
+    "Private TXT export returns actual file bytes",
+    "Private PDF export returns actual file bytes",
+    "Private DOCX export returns actual file bytes",
+    "Anonymous generated PDF download is denied",
+    "API difference exposes explicitly hidden content",
+    "Candidate can archive a nonactive version",
+    "Archived resume cannot become active",
+    "Stale archive update is rejected",
+    "Unarchive preserves the original content",
+    "Owned platform history is available through server permission checks",
+    "Full account export includes owned platform records and revision history",
+    "Eight original public feature/about/account-entry routes render"
+  ],
+  "cleanupErrors": [],
+  "executedAt": "2026-10-12T15:55:39.767Z",
+  "scope": "Migrated localhost Vite/Worker and fixed synthetic identity. Private synthetic audit history remains; no live provider or real candidate used."
+}

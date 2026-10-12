@@ -1,0 +1,17 @@
+{
+  "passed": true,
+  "checks": [
+    "x-content-type-options",
+    "x-frame-options",
+    "referrer-policy",
+    "SSR scripts carry the policy nonce; unrestricted inline scripts are disabled",
+    "Fresh nonce per response; HTML is not shared cached",
+    "Unrequested device permissions disabled",
+    "Anonymous API denied and not cached",
+    "Built framework hydrates and navigation works under nonce CSP",
+    "Browser blocks an injected inline script"
+  ],
+  "pageErrors": [],
+  "scope": "Built Worker loopback; browser CSP and anonymous denial. HTTPS HSTS and deployed identity require separate verification.",
+  "csp": "default-src 'self'; script-src 'self' 'nonce-De9F7lMnw1kK4YqrxQylHfUwmaZnrtp9'; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data: blob:; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+}

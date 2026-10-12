@@ -11,7 +11,7 @@
     "build": "node scripts/run-framework.mjs build",
     "start": "node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js dev --config dist/server/wrangler.json --local --persist-to .wrangler/state --ip 127.0.0.1 --inspector-port 0",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
-    "test": "node --experimental-strip-types --test tests/career-security.test.mjs tests/career-ai.test.mjs tests/provider-alerts.test.mjs tests/agent-matching.test.mjs tests/agent-store.test.mjs tests/agent-orchestrator.test.mjs",
+    "test": "node --experimental-strip-types --test tests/career-security.test.mjs tests/career-ai.test.mjs tests/provider-alerts.test.mjs tests/agent-matching.test.mjs tests/agent-store.test.mjs tests/agent-orchestrator.test.mjs tests/platform-store.test.mjs tests/resume-tools.test.mjs",
     "typecheck": "tsc --noEmit --incremental false",
     "security:audit": "npm audit",
     "db:generate": "drizzle-kit generate",
@@ -19,7 +19,11 @@
     "test:browser": "node tests/browser-smoke.mjs && node tests/account-browser-smoke.mjs && node tests/upgrade-browser-smoke.mjs",
     "test:headers": "node tests/header-smoke.mjs",
     "test:agents": "node --experimental-strip-types --test tests/agent-matching.test.mjs tests/agent-store.test.mjs tests/agent-orchestrator.test.mjs",
-    "test:agents:browser": "node tests/agent-browser-smoke.mjs"
+    "test:agents:browser": "node tests/agent-browser-smoke.mjs",
+    "test:platform:browser": "node tests/platform-browser-smoke.mjs",
+    "test:platform:http": "node tests/platform-http-smoke.mjs",
+    "test:exports": "node --experimental-strip-types --test tests/resume-tools.test.mjs",
+    "test:resumes:browser": "node tests/resume-browser-smoke.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
@@ -29,9 +33,11 @@
     "clsx": "2.1.1",
     "cmdk": "^1.1.1",
     "date-fns": "^4.4.0",
+    "docx": "9.10.0",
     "drizzle-orm": "0.45.2",
     "embla-carousel-react": "^8.6.0",
     "input-otp": "^1.4.2",
+    "jspdf": "4.2.1",
     "lucide-react": "^1.31.0",
     "next": "16.4.0",
     "next-themes": "^0.4.6",

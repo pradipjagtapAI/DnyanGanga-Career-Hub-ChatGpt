@@ -26,7 +26,7 @@ for (const file of new Set([...sources, ...clients])) {
   const content = readFileSync(file, 'utf8');
   for (const [rule, pattern] of rules) if (pattern.test(content)) violations.push({ file: path.relative(process.cwd(), file), rule });
 }
-const serverNames = ['CAREER_SCHEDULER_SECRET', 'DOCUMENT_PROCESSOR_TOKEN', 'OPENAI_API_KEY', 'RESEND_API_KEY', 'WHATSAPP_ACCESS_TOKEN', 'WHATSAPP_APP_SECRET'];
+const serverNames = ['CAREER_SCHEDULER_SECRET', 'CAREER_VERIFICATION_SECRET', 'DOCUMENT_PROCESSOR_TOKEN', 'OPENAI_API_KEY', 'RESEND_API_KEY', 'RESEND_WEBHOOK_SECRET', 'WHATSAPP_BUSINESS_TOKEN', 'WHATSAPP_ACCESS_TOKEN', 'WHATSAPP_APP_SECRET', 'WHATSAPP_VERIFY_TOKEN', 'SITES_SERVICE_BEARER'];
 for (const file of clients) {
   const content = readFileSync(file, 'utf8');
   for (const name of serverNames) if (content.includes(name)) violations.push({ file: path.relative(process.cwd(), file), rule: `server-marker:${name}` });
@@ -34,6 +34,6 @@ for (const file of clients) {
 const result = { executedAt: new Date().toISOString(), passed: violations.length === 0, sourceFiles: new Set(sources).size,
   clientFiles: clients.length, violations,
   scope: 'Tracked/new source text and built browser assets; known secret formats and selected server-only markers. This is a heuristic, not proof that all possible secrets are absent.' };
-writeFileSync('docs/agentic-secret-results.json', JSON.stringify(result, null, 2));
+writeFileSync(process.env.CAREER_SECRET_RESULTS || 'docs/agentic-secret-results.json', JSON.stringify(result, null, 2));
 console.log(JSON.stringify(result));
 assert.equal(violations.length, 0, 'Potential exposed secret or server-only marker detected. Review the reported paths privately.');

@@ -1,0 +1,2666 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "DnyanGanga Career Hub \u2013 current extension API",
+    "version": "2026-10-12",
+    "description": "Reference for implemented extension routes. Read alongside existing backend/agent guides for legacy routes and provider callbacks. Schemas are documentation; server validators are authoritative. No developer candidate-auth token or new password login endpoint is invented."
+  },
+  "servers": [
+    {
+      "url": "/api/career"
+    }
+  ],
+  "x-managed-authentication": "Sites opaque host-scoped candidate session via trusted dispatch; direct spoofed identity headers/service bearer do not establish a candidate. Provider callbacks and scheduler have separate documented signature/secret policies.",
+  "paths": {
+    "/state": {
+      "get": {
+        "summary": "Complete owned workspace, agent and platform state",
+        "description": "Managed Sites candidate session required; ownership is derived on the server. Responses are private/no-store. JSON mutations require same-origin Origin and X-Career-Action: 1. Browser ownership/role claims are rejected.",
+        "responses": {
+          "200": {
+            "description": "Owned records or completed candidate update; newly saved resume resources use201"
+          },
+          "201": {
+            "description": "New owned resource created"
+          },
+          "400": {
+            "description": "Invalid fields, confirmation or format"
+          },
+          "401": {
+            "description": "Managed sign-in required"
+          },
+          "403": {
+            "description": "Origin/policy denial"
+          },
+          "404": {
+            "description": "Absent record or different owner"
+          },
+          "409": {
+            "description": "Stale revision, pause, expired answer, quota or review required"
+          },
+          "429": {
+            "description": "Persistent operation limit"
+          },
+          "503": {
+            "description": "Required provider/storage/identity capability unavailable"
+          }
+        }
+      }
+    },
+    "/export": {
+      "get": {
+        "summary": "Private full account JSON export, including history",
+        "description": "Managed Sites candidate session required; ownership is derived on the server. Responses are private/no-store. JSON mutations require same-origin Origin and X-Career-Action: 1. Browser ownership/role claims are rejected.",
+        "responses": {
+          "200": {
+            "description": "Owned records or completed candidate update; newly saved resume resources use201"
+          },
+          "201": {
+            "description": "New owned resource created"
+          },
+          "400": {
+            "description": "Invalid fields, confirmation or format"
+          },
+          "401": {
+            "description": "Managed sign-in required"
+          },
+          "403": {
+            "description": "Origin/policy denial"
+          },
+          "404": {
+            "description": "Absent record or different owner"
+          },
+          "409": {
+            "description": "Stale revision, pause, expired answer, quota or review required"
+          },
+          "429": {
+            "description": "Persistent operation limit"
+          },
+          "503": {
+            "description": "Required provider/storage/identity capability unavailable"
+          }
+        }
+      }
+    },
+    "/platform/state": {
+      "get": {
+        "summary": "Owned goals, learning, CRM, interviews, data-use and measured usage",
+        "description": "Managed Sites candidate session required; ownership is derived on the server. Responses are private/no-store. JSON mutations require same-origin Origin and X-Career-Action: 1. Browser ownership/role claims are rejected.",
+        "responses": {
+          "200": {
+            "description": "Owned records or completed candidate update; newly saved resume resources use201"
+          },
+          "201": {
+            "description": "New owned resource created"
+          },
+          "400": {
+            "description": "Invalid fields, confirmation or format"
+          },
+          "401": {
+            "description": "Managed sign-in required"
+          },
+          "403": {
+            "description": "Origin/policy denial"
+          },
+          "404": {
+            "description": "Absent record or different owner"
+          },
+          "409": {
+            "description": "Stale revision, pause, expired answer, quota or review required"
+          },
+          "429": {
+            "description": "Persistent operation limit"
+          },
+          "503": {
+            "description": "Required provider/storage/identity capability unavailable"
+          }
+        }
+      }
+    },
+    "/platform/goals": {
+      "post": {
+        "summary": "Create confirmed goals",
+        "description": "Managed Sites candidate session required; ownership is derived on the server. Responses are private/no-store. JSON mutations require same-origin Origin and X-Career-Action: 1. Browser ownership/role claims are rejected.",
+        "parameters": [
+          {
+            "name": "X-Career-Action",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "allOf": [
+                  {
+                    "$ref": "#/components/schemas/Goal"
+                  },
+                  {
+                    "required": [
+                      "title",
+                      "confirmed"
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Owned records or completed candidate update; newly saved resume resources use201"
+          },
+          "201": {
+            "description": "New owned resource created"
+          },
+          "400": {
+            "description": "Invalid fields, confirmation or format"
+          },
+          "401": {
+            "description": "Managed sign-in required"
+          },
+          "403": {
+            "description": "Origin/policy denial"
+          },
+          "404": {
+            "description": "Absent record or different owner"
+          },
+          "409": {
+            "description": "Stale revision, pause, expired answer, quota or review required"
+          },
+          "429": {
+            "description": "Persistent operation limit"
+          },
+          "503": {
+            "description": "Required provider/storage/identity capability unavailable"
+          }
+        }
+      }
+    },
+    "/platform/goals/{id}": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "patch": {
+        "summary": "Update with owned revision check",
+        "description": "Managed Sites candidate session required; ownership is derived on the server. Responses are private/no-store. JSON mutations require same-origin Origin and X-Career-Action: 1. Browser ownership/role claims are rejected.",
+        "parameters": [
+          {
+            "name": "X-Career-Action",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "allOf": [
+                  {
+                    "$ref": "#/components/schemas/Goal"
+                  },
+                  {
+                    "required": [
+                      "confirmed",
+                      "expectedRevision"
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Owned records or completed candidate update; newly saved resume resources use201"
+          },
+          "201": {
+            "description": "New owned resource created"
+          },
+          "400": {
+            "description": "Invalid fields, confirmation or format"
+          },
+          "401": {
+            "description": "Managed sign-in required"
+          },
+          "403": {
+            "description": "Origin/policy denial"
+          },
+          "404": {
+            "description": "Absent record or different owner"
+          },
+          "409": {
+            "description": "Stale revision, pause, expired answer, quota or review required"
+          },
+          "429": {
+            "description": "Persistent operation limit"
+          },
+          "503": {
+            "description": "Required provider/storage/identity capability unavailable"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete current owned record; private revision history retained",
+        "description": "Managed Sites candidate session required; ownership is derived on the server. Responses are private/no-store. JSON mutations require same-origin Origin and X-Career-Action: 1. Browser ownership/role claims are rejected.",
+        "parameters": [
+          {
+            "name": "X-Career-Action",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteConfirmed"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Owned records or completed candidate update; newly saved resume resources use201"
+          },
+          "201": {
+            "description": "New owned resource created"
+          },
+          "400": {
+            "description": "Invalid fields, confirmation or format"
+          },
+          "401": {
+            "description": "Managed sign-in required"
+          },
+          "403": {
+            "description": "Origin/policy denial"
+          },
+          "404": {
+            "description": "Absent record or different owner"
+          },
+          "409": {
+            "description": "Stale revision, pause, expired answer, quota or review required"
+          },
+          "429": {
+            "description": "Persistent operation limit"
+          },
+          "503": {
+            "description": "Required provider/storage/identity capability unavailable"
+          }
+        }
+      }
+    },
+    "/platform/goals/{id}/history": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "summary": "Existing owned record's private version history",
+        "description": "Managed Sites candidate session required; ownership is derived on the server. Responses are private/no-store. JSON mutations require same-origin Origin and X-Career-Action: 1. Browser ownership/role claims are rejected.",
+        "responses": {
+          "200": {
+            "description": "Owned records or completed candidate update; newly saved resume resources use201"
+          },
+          "201": {
+            "description": "New owned resource created"
+          },
+          "400": {
+            "description": "Invalid fields, confirmation or format"
+          },
+          "401": {
+            "description": "Managed sign-in required"
+          },
+          "403": {
+            "description": "Origin/policy denial"
+          },
+          "404": {
+            "description": "Absent record or different owner"
+          },
+          "409": {
+            "description": "Stale revision, pause, expired answer, quota or review required"
+          },
+          "429": {
+            "description": "Persistent operation limit"
+          },
+          "503": {
+            "description": "Required provider/storage/identity capability unavailable"
+          }
+        }
+      }
+    },
+    "/platform/learning": {
+      "post": {
+        "summary": "Create confirmed learning",
+        "description": "Managed Sites candidate session required; ownership is derived on the server. Responses are private/no-store. JSON mutations require same-origin Origin and X-Career-Action: 1. Browser ownership/role claims are rejected.",
+        "parameters": [
+          {
+            "name": "X-Career-Action",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "allOf": [
+                  {
+                    "$ref": "#/components/schemas/Learning"
+                  },
+                  {
+                    "required": [
+                      "title",
+                      "confirmed"
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Owned records or completed candidate update; newly saved resume resources use201"
+          },
+          "201": {
+            "description": "New owned resource created"
+          },
+          "400": {
+            "description": "Invalid fields, confirmation or format"
+          },
+          "401": {
+            "description": "Managed sign-in required"
+          },
+          "403": {
+            "description": "Origin/policy denial"
+          },
+          "404": {
+            "description": "Absent record or different owner"
+          },
+          "409": {
+            "description": "Stale revision, pause, expired answer, quota or review required"
+          },
+          "429": {
+            "description": "Persistent operation limit"
+          },
+          "503": {
+            "description": "Required provider/storage/identity capability unavailable"
+          }
+        }
+      }
+    },
+    "/platform/learning/{id}": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "patch": {
+        "summary": "Update with owned revision check",
+        "description": "Managed Sites candidate session required; ownership is derived on the server. Responses are private/no-store. JSON mutations require same-origin Origin and X-Career-Action: 1. Browser ownership/role claims are rejected.",
+        "parameters": [
+          {
+            "name": "X-Career-Action",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "allOf": [
+                  {
+                    "$ref": "#/components/schemas/Learning"
+                  },
+                  {
+                    "required": [
+                      "confirmed",
+                      "expectedRevision"
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Owned records or completed candidate update; newly saved resume resources use201"
+          },
+          "201": {
+            "description": "New owned resource created"
+          },
+          "400": {
+            "description": "Invalid fields, confirmation or format"
+          },
+          "401": {
+            "description": "Managed sign-in required"
+          },
+          "403": {
+            "description": "Origin/policy denial"
+          },
+          "404": {
+            "description": "Absent record or different owner"
+          },
+          "409": {
+            "description": "Stale revision, pause, expired answer, quota or review required"
+          },
+          "429": {
+            "description": "Persistent operation limit"
+          },
+          "503": {
+            "description": "Required provider/storage/identity capability unavailable"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete current owned record; private revision history retained",
+        "description": "Managed Sites candidate session required; ownership is derived on the server. Responses are private/no-store. JSON mutations require same-origin Origin and X-Career-Action: 1. Browser ownership/role claims are rejected.",
+        "parameters": [
+          {
+            "name": "X-Career-Action",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteConfirmed"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Owned records or completed candidate update; newly saved resume resources use201"
+          },
+          "201": {
+            "description": "New owned resource created"
+          },
+          "400": {
+            "description": "Invalid fields, confirmation or format"
+          },
+          "401": {
+            "description": "Managed sign-in required"
+          },
+          "403": {
+            "description": "Origin/policy denial"
+          },
+          "404": {
+            "description": "Absent record or different owner"
+          },
+          "409": {
+            "description": "Stale revision, pause, expired answer, quota or review required"
+          },
+          "429": {
+            "description": "Persistent operation limit"
+          },
+          "503": {
+            "description": "Required provider/storage/identity capability unavailable"
+          }
+        }
+      }
+    },
+    "/platform/learning/{id}/history": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "summary": "Existing owned record's private version history",
+        "description": "Managed Sites candidate session required; ownership is derived on the server. Responses are private/no-store. JSON mutations require same-origin Origin and X-Career-Action: 1. Browser ownership/role claims are rejected.",
+        "responses": {
+          "200": {
+            "description": "Owned records or completed candidate update; newly saved resume resources use201"
+          },
+          "201": {
+            "description": "New owned resource created"
+          },
+          "400": {
+            "description": "Invalid fields, confirmation or format"
+          },
+          "401": {
+            "description": "Managed sign-in required"
+          },
+          "403": {
+            "description": "Origin/policy denial"
+          },
+          "404": {
+            "description": "Absent record or different owner"
+          },
+          "409": {
+            "description": "Stale revision, pause, expired answer, quota or review required"
+          },
+          "429": {
+            "description": "Persistent operation limit"
+          },
+          "503": {
+            "description": "Required provider/storage/identity capability unavailable"
+          }
+        }
+      }
+    },
+    "/platform/recruiters": {
+      "post": {
+        "summary": "Create confirmed recruiters",
+        "description": "Managed Sites candidate session required; ownership is derived on the server. Responses are private/no-store. JSON mutations require same-origin Origin and X-Career-Action: 1. Browser ownership/role claims are rejected.",
+        "parameters": [
+          {
+            "name": "X-Career-Action",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "allOf": [
+                  {
+                    "$ref": "#/components/schemas/Recruiter"
+                  },
+                  {
+                    "required": [
+                      "name",
+                      "confirmed"
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Owned records or completed candidate update; newly saved resume resources use201"
+          },
+          "201": {
+            "description": "New owned resource created"
+          },
+          "400": {
+            "description": "Invalid fields, confirmation or format"
+          },
+          "401": {
+            "description": "Managed sign-in required"
+          },
+          "403": {
+            "description": "Origin/policy denial"
+          },
+          "404": {
+            "description": "Absent record or different owner"
+          },
+          "409": {
+            "description": "Stale revision, pause, expired answer, quota or review required"
+          },
+          "429": {
+            "description": "Persistent operation limit"
+          },
+          "503": {
+            "description": "Required provider/storage/identity capability unavailable"
+          }
+        }
+      }
+    },
+    "/platform/recruiters/{id}": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "patch": {
+        "summary": "Update with owned revision check",
+        "description": "Managed Sites candidate session required; ownership is derived on the server. Responses are private/no-store. JSON mutations require same-origin Origin and X-Career-Action: 1. Browser ownership/role claims are rejected.",
+        "parameters": [
+          {
+            "name": "X-Career-Action",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "allOf": [
+                  {
+                    "$ref": "#/components/schemas/Recruiter"
+                  },
+                  {
+                    "required": [
+                      "confirmed",
+                      "expectedRevision"
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Owned records or completed candidate update; newly saved resume resources use201"
+          },
+          "201": {
+            "description": "New owned resource created"
+          },
+          "400": {
+            "description": "Invalid fields, confirmation or format"
+          },
+          "401": {
+            "description": "Managed sign-in required"
+          },
+          "403": {
+            "description": "Origin/policy denial"
+          },
+          "404": {
+            "description": "Absent record or different owner"
+          },
+          "409": {
+            "description": "Stale revision, pause, expired answer, quota or review required"
+          },
+          "429": {
+            "description": "Persistent operation limit"
+          },
+          "503": {
+            "description": "Required provider/storage/identity capability unavailable"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete current owned record; private revision history retained",
+        "description": "Managed Sites candidate session required; ownership is derived on the server. Responses are private/no-store. JSON mutations require same-origin Origin and X-Career-Action: 1. Browser ownership/role claims are rejected.",
+        "parameters": [
+          {
+            "name": "X-Career-Action",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteConfirmed"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Owned records or completed candidate update; newly saved resume resources use201"
+          },
+          "201": {
+            "description": "New owned resource created"
+          },
+          "400": {
+            "description": "Invalid fields, confirmation or format"
+          },
+          "401": {
+            "description": "Managed sign-in required"
+          },
+          "403": {
+            "description": "Origin/policy denial"
+          },
+          "404": {
+            "description": "Absent record or different owner"
+          },
+          "409": {
+            "description": "Stale revision, pause, expired answer, quota or review required"
+          },
+          "429": {
+            "description": "Persistent operation limit"
+          },
+          "503": {
+            "description": "Required provider/storage/identity capability unavailable"
+          }
+        }
+      }
+    },
+    "/platform/recruiters/{id}/history": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "summary": "Existing owned record's private version history",
+        "description": "Managed Sites candidate session required; ownership is derived on the server. Responses are private/no-store. JSON mutations require same-origin Origin and X-Career-Action: 1. Browser ownership/role claims are rejected.",
+        "responses": {
+          "200": {
+            "description": "Owned records or completed candidate update; newly saved resume resources use201"
+          },
+          "201": {
+            "description": "New owned resource created"
+          },
+          "400": {
+            "description": "Invalid fields, confirmation or format"
+          },
+          "401": {
+            "description": "Managed sign-in required"
+          },
+          "403": {
+            "description": "Origin/policy denial"
+          },
+          "404": {
+            "description": "Absent record or different owner"
+          },
+          "409": {
+            "description": "Stale revision, pause, expired answer, quota or review required"
+          },
+          "429": {
+            "description": "Persistent operation limit"
+          },
+          "503": {
+            "description": "Required provider/storage/identity capability unavailable"
+          }
+        }
+      }
+    },
+    "/platform/interviews": {
+      "post": {
+        "summary": "Create confirmed interviews",
+        "description": "Managed Sites candidate session required; ownership is derived on the server. Responses are private/no-store. JSON mutations require same-origin Origin and X-Career-Action: 1. Browser ownership/role claims are rejected.",
+        "parameters": [
+          {
+            "name": "X-Career-Action",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "allOf": [
+                  {
+                    "$ref": "#/components/schemas/Interview"
+                  },
+                  {
+                    "required": [
+                      "company",
+                      "role",
+                      "scheduledAt",
+                      "confirmed"
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Owned records or completed candidate update; newly saved resume resources use201"
+          },
+          "201": {
+            "description": "New owned resource created"
+          },
+          "400": {
+            "description": "Invalid fields, confirmation or format"
+          },
+          "401": {
+            "description": "Managed sign-in required"
+          },
+          "403": {
+            "description": "Origin/policy denial"
+          },
+          "404": {
+            "description": "Absent record or different owner"
+          },
+          "409": {
+            "description": "Stale revision, pause, expired answer, quota or review required"
+          },
+          "429": {
+            "description": "Persistent operation limit"
+          },
+          "503": {
+            "description": "Required provider/storage/identity capability unavailable"
+          }
+        }
+      }
+    },
+    "/platform/interviews/{id}": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "patch": {
+        "summary": "Update with owned revision check",
+        "description": "Managed Sites candidate session required; ownership is derived on the server. Responses are private/no-store. JSON mutations require same-origin Origin and X-Career-Action: 1. Browser ownership/role claims are rejected.",
+        "parameters": [
+          {
+            "name": "X-Career-Action",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "allOf": [
+                  {
+                    "$ref": "#/components/schemas/Interview"
+                  },
+                  {
+                    "required": [
+                      "confirmed",
+                      "expectedRevision"
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Owned records or completed candidate update; newly saved resume resources use201"
+          },
+          "201": {
+            "description": "New owned resource created"
+          },
+          "400": {
+            "description": "Invalid fields, confirmation or format"
+          },
+          "401": {
+            "description": "Managed sign-in required"
+          },
+          "403": {
+            "description": "Origin/policy denial"
+          },
+          "404": {
+            "description": "Absent record or different owner"
+          },
+          "409": {
+            "description": "Stale revision, pause, expired answer, quota or review required"
+          },
+          "429": {
+            "description": "Persistent operation limit"
+          },
+          "503": {
+            "description": "Required provider/storage/identity capability unavailable"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete current owned record; private revision history retained",
+        "description": "Managed Sites candidate session required; ownership is derived on the server. Responses are private/no-store. JSON mutations require same-origin Origin and X-Career-Action: 1. Browser ownership/role claims are rejected.",
+        "parameters": [
+          {
+            "name": "X-Career-Action",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteConfirmed"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Owned records or completed candidate update; newly saved resume resources use201"
+          },
+          "201": {
+            "description": "New owned resource created"
+          },
+          "400": {
+            "description": "Invalid fields, confirmation or format"
+          },
+          "401": {
+            "description": "Managed sign-in required"
+          },
+          "403": {
+            "description": "Origin/policy denial"
+          },
+          "404": {
+            "description": "Absent record or different owner"
+          },
+          "409": {
+            "description": "Stale revision, pause, expired answer, quota or review required"
+          },
+          "429": {
+            "description": "Persistent operation limit"
+          },
+          "503": {
+            "description": "Required provider/storage/identity capability unavailable"
+          }
+        }
+      }
+    },
+    "/platform/interviews/{id}/history": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "summary": "Existing owned record's private version history",
+        "description": "Managed Sites candidate session required; ownership is derived on the server. Responses are private/no-store. JSON mutations require same-origin Origin and X-Career-Action: 1. Browser ownership/role claims are rejected.",
+        "responses": {
+          "200": {
+            "description": "Owned records or completed candidate update; newly saved resume resources use201"
+          },
+          "201": {
+            "description": "New owned resource created"
+          },
+          "400": {
+            "description": "Invalid fields, confirmation or format"
+          },
+          "401": {
+            "description": "Managed sign-in required"
+          },
+          "403": {
+            "description": "Origin/policy denial"
+          },
+          "404": {
+            "description": "Absent record or different owner"
+          },
+          "409": {
+            "description": "Stale revision, pause, expired answer, quota or review required"
+          },
+          "429": {
+            "description": "Persistent operation limit"
+          },
+          "503": {
+            "description": "Required provider/storage/identity capability unavailable"
+          }
+        }
+      }
+    },
+    "/platform/recruiters/{id}/interactions": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "post": {
+        "summary": "Record an observed manual interaction; never forge sent status",
+        "description": "Managed Sites candidate session required; ownership is derived on the server. Responses are private/no-store. JSON mutations require same-origin Origin and X-Career-Action: 1. Browser ownership/role claims are rejected.",
+        "parameters": [
+          {
+            "name": "X-Career-Action",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "type": {
+                    "enum": [
+                      "note",
+                      "conversation",
+                      "email_received",
+                      "meeting"
+                    ]
+                  },
+                  "text": {
+                    "type": "string"
+                  },
+                  "occurredAt": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "confirmed": {
+                    "type": "boolean",
+                    "const": true
+                  },
+                  "expectedRevision": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "type",
+                  "text",
+                  "confirmed",
+                  "expectedRevision"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Owned records or completed candidate update; newly saved resume resources use201"
+          },
+          "201": {
+            "description": "New owned resource created"
+          },
+          "400": {
+            "description": "Invalid fields, confirmation or format"
+          },
+          "401": {
+            "description": "Managed sign-in required"
+          },
+          "403": {
+            "description": "Origin/policy denial"
+          },
+          "404": {
+            "description": "Absent record or different owner"
+          },
+          "409": {
+            "description": "Stale revision, pause, expired answer, quota or review required"
+          },
+          "429": {
+            "description": "Persistent operation limit"
+          },
+          "503": {
+            "description": "Required provider/storage/identity capability unavailable"
+          }
+        }
+      }
+    },
+    "/resumes/{id}/variant": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "post": {
+        "summary": "Save explicitly reviewed section/template variant; original and active selection preserved",
+        "description": "Managed Sites candidate session required; ownership is derived on the server. Responses are private/no-store. JSON mutations require same-origin Origin and X-Career-Action: 1. Browser ownership/role claims are rejected.",
+        "parameters": [
+          {
+            "name": "X-Career-Action",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Variant"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Owned records or completed candidate update; newly saved resume resources use201"
+          },
+          "201": {
+            "description": "New owned resource created"
+          },
+          "400": {
+            "description": "Invalid fields, confirmation or format"
+          },
+          "401": {
+            "description": "Managed sign-in required"
+          },
+          "403": {
+            "description": "Origin/policy denial"
+          },
+          "404": {
+            "description": "Absent record or different owner"
+          },
+          "409": {
+            "description": "Stale revision, pause, expired answer, quota or review required"
+          },
+          "429": {
+            "description": "Persistent operation limit"
+          },
+          "503": {
+            "description": "Required provider/storage/identity capability unavailable"
+          }
+        }
+      }
+    },
+    "/resumes/{id}/analysis": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "jobId",
+          "in": "query",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "compareTo",
+          "in": "query",
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "summary": "Local fact indicators, structure, section choices and optional exact difference",
+        "description": "Managed Sites candidate session required; ownership is derived on the server. Responses are private/no-store. JSON mutations require same-origin Origin and X-Career-Action: 1. Browser ownership/role claims are rejected.",
+        "responses": {
+          "200": {
+            "description": "Owned records or completed candidate update; newly saved resume resources use201"
+          },
+          "201": {
+            "description": "New owned resource created"
+          },
+          "400": {
+            "description": "Invalid fields, confirmation or format"
+          },
+          "401": {
+            "description": "Managed sign-in required"
+          },
+          "403": {
+            "description": "Origin/policy denial"
+          },
+          "404": {
+            "description": "Absent record or different owner"
+          },
+          "409": {
+            "description": "Stale revision, pause, expired answer, quota or review required"
+          },
+          "429": {
+            "description": "Persistent operation limit"
+          },
+          "503": {
+            "description": "Required provider/storage/identity capability unavailable"
+          }
+        }
+      }
+    },
+    "/resumes/{id}/archive": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "patch": {
+        "summary": "CAS archive/unarchive; active archive and archived activation rejected",
+        "description": "Managed Sites candidate session required; ownership is derived on the server. Responses are private/no-store. JSON mutations require same-origin Origin and X-Career-Action: 1. Browser ownership/role claims are rejected.",
+        "parameters": [
+          {
+            "name": "X-Career-Action",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "archived": {
+                    "type": "boolean"
+                  },
+                  "expectedArchived": {
+                    "type": "boolean"
+                  },
+                  "confirmed": {
+                    "type": "boolean",
+                    "const": true
+                  }
+                },
+                "required": [
+                  "archived",
+                  "expectedArchived",
+                  "confirmed"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Owned records or completed candidate update; newly saved resume resources use201"
+          },
+          "201": {
+            "description": "New owned resource created"
+          },
+          "400": {
+            "description": "Invalid fields, confirmation or format"
+          },
+          "401": {
+            "description": "Managed sign-in required"
+          },
+          "403": {
+            "description": "Origin/policy denial"
+          },
+          "404": {
+            "description": "Absent record or different owner"
+          },
+          "409": {
+            "description": "Stale revision, pause, expired answer, quota or review required"
+          },
+          "429": {
+            "description": "Persistent operation limit"
+          },
+          "503": {
+            "description": "Required provider/storage/identity capability unavailable"
+          }
+        }
+      }
+    },
+    "/resumes/{id}/download": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "format",
+          "in": "query",
+          "schema": {
+            "enum": [
+              "txt",
+              "pdf",
+              "docx"
+            ],
+            "default": "txt"
+          }
+        }
+      ],
+      "get": {
+        "summary": "Authorized bounded PDF/DOCX/text export",
+        "description": "Managed Sites candidate session required; ownership is derived on the server. Responses are private/no-store. JSON mutations require same-origin Origin and X-Career-Action: 1. Browser ownership/role claims are rejected.",
+        "responses": {
+          "200": {
+            "description": "Actual attachment; PDF unsupported scripts return422 without losing names",
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "application/vnd.openxmlformats-officedocument.wordprocessingml.document": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "New owned resource created"
+          },
+          "400": {
+            "description": "Invalid fields, confirmation or format"
+          },
+          "401": {
+            "description": "Managed sign-in required"
+          },
+          "403": {
+            "description": "Origin/policy denial"
+          },
+          "404": {
+            "description": "Absent record or different owner"
+          },
+          "409": {
+            "description": "Stale revision, pause, expired answer, quota or review required"
+          },
+          "422": {
+            "description": "PDF_SCRIPT_UNSUPPORTED; use DOCX or text"
+          },
+          "429": {
+            "description": "Persistent operation limit"
+          },
+          "503": {
+            "description": "Required provider/storage/identity capability unavailable"
+          }
+        }
+      }
+    },
+    "/generated-documents/{id}/download": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "format",
+          "in": "query",
+          "schema": {
+            "enum": [
+              "txt",
+              "pdf",
+              "docx"
+            ],
+            "default": "txt"
+          }
+        }
+      ],
+      "get": {
+        "summary": "Authorized bounded PDF/DOCX/text export",
+        "description": "Managed Sites candidate session required; ownership is derived on the server. Responses are private/no-store. JSON mutations require same-origin Origin and X-Career-Action: 1. Browser ownership/role claims are rejected.",
+        "responses": {
+          "200": {
+            "description": "Actual attachment; PDF unsupported scripts return422 without losing names",
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "application/vnd.openxmlformats-officedocument.wordprocessingml.document": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "New owned resource created"
+          },
+          "400": {
+            "description": "Invalid fields, confirmation or format"
+          },
+          "401": {
+            "description": "Managed sign-in required"
+          },
+          "403": {
+            "description": "Origin/policy denial"
+          },
+          "404": {
+            "description": "Absent record or different owner"
+          },
+          "409": {
+            "description": "Stale revision, pause, expired answer, quota or review required"
+          },
+          "422": {
+            "description": "PDF_SCRIPT_UNSUPPORTED; use DOCX or text"
+          },
+          "429": {
+            "description": "Persistent operation limit"
+          },
+          "503": {
+            "description": "Required provider/storage/identity capability unavailable"
+          }
+        }
+      }
+    },
+    "/agents/packages": {
+      "post": {
+        "summary": "Prepare package with explicitly selected fresh answers; actual employer questions remain ASK USER",
+        "description": "Managed Sites candidate session required; ownership is derived on the server. Responses are private/no-store. JSON mutations require same-origin Origin and X-Career-Action: 1. Browser ownership/role claims are rejected.",
+        "parameters": [
+          {
+            "name": "X-Career-Action",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PackageCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Owned records or completed candidate update; newly saved resume resources use201"
+          },
+          "201": {
+            "description": "New owned resource created"
+          },
+          "400": {
+            "description": "Invalid fields, confirmation or format"
+          },
+          "401": {
+            "description": "Managed sign-in required"
+          },
+          "403": {
+            "description": "Origin/policy denial"
+          },
+          "404": {
+            "description": "Absent record or different owner"
+          },
+          "409": {
+            "description": "Stale revision, pause, expired answer, quota or review required"
+          },
+          "429": {
+            "description": "Persistent operation limit"
+          },
+          "503": {
+            "description": "Required provider/storage/identity capability unavailable"
+          }
+        }
+      }
+    },
+    "/agents/packages/{id}": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "patch": {
+        "summary": "Revise selected answers/cover/personal fields and invalidate prior approval",
+        "description": "Managed Sites candidate session required; ownership is derived on the server. Responses are private/no-store. JSON mutations require same-origin Origin and X-Career-Action: 1. Browser ownership/role claims are rejected.",
+        "parameters": [
+          {
+            "name": "X-Career-Action",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PackageEdit"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Owned records or completed candidate update; newly saved resume resources use201"
+          },
+          "201": {
+            "description": "New owned resource created"
+          },
+          "400": {
+            "description": "Invalid fields, confirmation or format"
+          },
+          "401": {
+            "description": "Managed sign-in required"
+          },
+          "403": {
+            "description": "Origin/policy denial"
+          },
+          "404": {
+            "description": "Absent record or different owner"
+          },
+          "409": {
+            "description": "Stale revision, pause, expired answer, quota or review required"
+          },
+          "429": {
+            "description": "Persistent operation limit"
+          },
+          "503": {
+            "description": "Required provider/storage/identity capability unavailable"
+          }
+        }
+      }
+    },
+    "/agents/packages/{id}/approve": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "post": {
+        "summary": "Approve exact current snapshot for1hour; no submission",
+        "description": "Managed Sites candidate session required; ownership is derived on the server. Responses are private/no-store. JSON mutations require same-origin Origin and X-Career-Action: 1. Browser ownership/role claims are rejected.",
+        "parameters": [
+          {
+            "name": "X-Career-Action",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Approval"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Owned records or completed candidate update; newly saved resume resources use201"
+          },
+          "201": {
+            "description": "New owned resource created"
+          },
+          "400": {
+            "description": "Invalid fields, confirmation or format"
+          },
+          "401": {
+            "description": "Managed sign-in required"
+          },
+          "403": {
+            "description": "Origin/policy denial"
+          },
+          "404": {
+            "description": "Absent record or different owner"
+          },
+          "409": {
+            "description": "Stale revision, pause, expired answer, quota or review required"
+          },
+          "429": {
+            "description": "Persistent operation limit"
+          },
+          "503": {
+            "description": "Required provider/storage/identity capability unavailable"
+          }
+        }
+      }
+    },
+    "/agents/packages/{id}/execute": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "post": {
+        "summary": "Unsupported adapter remains blocked and never writes Applied",
+        "description": "Managed Sites candidate session required; ownership is derived on the server. Responses are private/no-store. JSON mutations require same-origin Origin and X-Career-Action: 1. Browser ownership/role claims are rejected.",
+        "parameters": [
+          {
+            "name": "X-Career-Action",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Execution"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Owned records or completed candidate update; newly saved resume resources use201"
+          },
+          "201": {
+            "description": "New owned resource created"
+          },
+          "400": {
+            "description": "Invalid fields, confirmation or format"
+          },
+          "401": {
+            "description": "Managed sign-in required"
+          },
+          "403": {
+            "description": "Origin/policy denial"
+          },
+          "404": {
+            "description": "Absent record or different owner"
+          },
+          "409": {
+            "description": "Stale revision, pause, expired answer, quota or review required"
+          },
+          "429": {
+            "description": "Persistent operation limit"
+          },
+          "503": {
+            "description": "Required provider/storage/identity capability unavailable"
+          }
+        }
+      }
+    },
+    "/agents/state": {
+      "get": {
+        "summary": "Actual22agent state, task history, campaigns, proposals and approvals",
+        "description": "Managed Sites candidate session required; ownership is derived on the server. Responses are private/no-store. JSON mutations require same-origin Origin and X-Career-Action: 1. Browser ownership/role claims are rejected.",
+        "responses": {
+          "200": {
+            "description": "Owned records or completed candidate update; newly saved resume resources use201"
+          },
+          "201": {
+            "description": "New owned resource created"
+          },
+          "400": {
+            "description": "Invalid fields, confirmation or format"
+          },
+          "401": {
+            "description": "Managed sign-in required"
+          },
+          "403": {
+            "description": "Origin/policy denial"
+          },
+          "404": {
+            "description": "Absent record or different owner"
+          },
+          "409": {
+            "description": "Stale revision, pause, expired answer, quota or review required"
+          },
+          "429": {
+            "description": "Persistent operation limit"
+          },
+          "503": {
+            "description": "Required provider/storage/identity capability unavailable"
+          }
+        }
+      }
+    },
+    "/agents/runs": {
+      "post": {
+        "summary": "Start bounded context-specific workflow",
+        "description": "Managed Sites candidate session required; ownership is derived on the server. Responses are private/no-store. JSON mutations require same-origin Origin and X-Career-Action: 1. Browser ownership/role claims are rejected.",
+        "parameters": [
+          {
+            "name": "X-Career-Action",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "description": "Strict request fields/types defined in career-agent-contract.ts, career-agent-store.ts and career-ai.ts. See platform-data/workflows guides; do not submit arbitrary context, model, identity or role fields."
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Owned records or completed candidate update; newly saved resume resources use201"
+          },
+          "201": {
+            "description": "New owned resource created"
+          },
+          "400": {
+            "description": "Invalid fields, confirmation or format"
+          },
+          "401": {
+            "description": "Managed sign-in required"
+          },
+          "403": {
+            "description": "Origin/policy denial"
+          },
+          "404": {
+            "description": "Absent record or different owner"
+          },
+          "409": {
+            "description": "Stale revision, pause, expired answer, quota or review required"
+          },
+          "429": {
+            "description": "Persistent operation limit"
+          },
+          "503": {
+            "description": "Required provider/storage/identity capability unavailable"
+          }
+        }
+      }
+    },
+    "/agents/runs/{id}/continue": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "post": {
+        "summary": "Continue queued workflow under current policy",
+        "description": "Managed Sites candidate session required; ownership is derived on the server. Responses are private/no-store. JSON mutations require same-origin Origin and X-Career-Action: 1. Browser ownership/role claims are rejected.",
+        "parameters": [
+          {
+            "name": "X-Career-Action",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "description": "Strict request fields/types defined in career-agent-contract.ts, career-agent-store.ts and career-ai.ts. See platform-data/workflows guides; do not submit arbitrary context, model, identity or role fields."
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Owned records or completed candidate update; newly saved resume resources use201"
+          },
+          "201": {
+            "description": "New owned resource created"
+          },
+          "400": {
+            "description": "Invalid fields, confirmation or format"
+          },
+          "401": {
+            "description": "Managed sign-in required"
+          },
+          "403": {
+            "description": "Origin/policy denial"
+          },
+          "404": {
+            "description": "Absent record or different owner"
+          },
+          "409": {
+            "description": "Stale revision, pause, expired answer, quota or review required"
+          },
+          "429": {
+            "description": "Persistent operation limit"
+          },
+          "503": {
+            "description": "Required provider/storage/identity capability unavailable"
+          }
+        }
+      }
+    },
+    "/agents/searches": {
+      "post": {
+        "summary": "Save owned campaign",
+        "description": "Managed Sites candidate session required; ownership is derived on the server. Responses are private/no-store. JSON mutations require same-origin Origin and X-Career-Action: 1. Browser ownership/role claims are rejected.",
+        "parameters": [
+          {
+            "name": "X-Career-Action",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "description": "Strict request fields/types defined in career-agent-contract.ts, career-agent-store.ts and career-ai.ts. See platform-data/workflows guides; do not submit arbitrary context, model, identity or role fields."
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Owned records or completed candidate update; newly saved resume resources use201"
+          },
+          "201": {
+            "description": "New owned resource created"
+          },
+          "400": {
+            "description": "Invalid fields, confirmation or format"
+          },
+          "401": {
+            "description": "Managed sign-in required"
+          },
+          "403": {
+            "description": "Origin/policy denial"
+          },
+          "404": {
+            "description": "Absent record or different owner"
+          },
+          "409": {
+            "description": "Stale revision, pause, expired answer, quota or review required"
+          },
+          "429": {
+            "description": "Persistent operation limit"
+          },
+          "503": {
+            "description": "Required provider/storage/identity capability unavailable"
+          }
+        }
+      }
+    },
+    "/agents/answers": {
+      "post": {
+        "summary": "Confirm exact answer with bounded expiry",
+        "description": "Managed Sites candidate session required; ownership is derived on the server. Responses are private/no-store. JSON mutations require same-origin Origin and X-Career-Action: 1. Browser ownership/role claims are rejected.",
+        "parameters": [
+          {
+            "name": "X-Career-Action",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "description": "Strict request fields/types defined in career-agent-contract.ts, career-agent-store.ts and career-ai.ts. See platform-data/workflows guides; do not submit arbitrary context, model, identity or role fields."
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Owned records or completed candidate update; newly saved resume resources use201"
+          },
+          "201": {
+            "description": "New owned resource created"
+          },
+          "400": {
+            "description": "Invalid fields, confirmation or format"
+          },
+          "401": {
+            "description": "Managed sign-in required"
+          },
+          "403": {
+            "description": "Origin/policy denial"
+          },
+          "404": {
+            "description": "Absent record or different owner"
+          },
+          "409": {
+            "description": "Stale revision, pause, expired answer, quota or review required"
+          },
+          "429": {
+            "description": "Persistent operation limit"
+          },
+          "503": {
+            "description": "Required provider/storage/identity capability unavailable"
+          }
+        }
+      }
+    },
+    "/agents/vault/confirm": {
+      "post": {
+        "summary": "Explicitly confirm typed personal fact",
+        "description": "Managed Sites candidate session required; ownership is derived on the server. Responses are private/no-store. JSON mutations require same-origin Origin and X-Career-Action: 1. Browser ownership/role claims are rejected.",
+        "parameters": [
+          {
+            "name": "X-Career-Action",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "description": "Strict request fields/types defined in career-agent-contract.ts, career-agent-store.ts and career-ai.ts. See platform-data/workflows guides; do not submit arbitrary context, model, identity or role fields."
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Owned records or completed candidate update; newly saved resume resources use201"
+          },
+          "201": {
+            "description": "New owned resource created"
+          },
+          "400": {
+            "description": "Invalid fields, confirmation or format"
+          },
+          "401": {
+            "description": "Managed sign-in required"
+          },
+          "403": {
+            "description": "Origin/policy denial"
+          },
+          "404": {
+            "description": "Absent record or different owner"
+          },
+          "409": {
+            "description": "Stale revision, pause, expired answer, quota or review required"
+          },
+          "429": {
+            "description": "Persistent operation limit"
+          },
+          "503": {
+            "description": "Required provider/storage/identity capability unavailable"
+          }
+        }
+      }
+    },
+    "/ai": {
+      "post": {
+        "summary": "Prepare guarded AI/local self-review result",
+        "description": "Managed Sites candidate session required; ownership is derived on the server. Responses are private/no-store. JSON mutations require same-origin Origin and X-Career-Action: 1. Browser ownership/role claims are rejected.",
+        "parameters": [
+          {
+            "name": "X-Career-Action",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "description": "Strict request fields/types defined in career-agent-contract.ts, career-agent-store.ts and career-ai.ts. See platform-data/workflows guides; do not submit arbitrary context, model, identity or role fields."
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Owned records or completed candidate update; newly saved resume resources use201"
+          },
+          "201": {
+            "description": "New owned resource created"
+          },
+          "400": {
+            "description": "Invalid fields, confirmation or format"
+          },
+          "401": {
+            "description": "Managed sign-in required"
+          },
+          "403": {
+            "description": "Origin/policy denial"
+          },
+          "404": {
+            "description": "Absent record or different owner"
+          },
+          "409": {
+            "description": "Stale revision, pause, expired answer, quota or review required"
+          },
+          "429": {
+            "description": "Persistent operation limit"
+          },
+          "503": {
+            "description": "Required provider/storage/identity capability unavailable"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Goal": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "targetRole": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "preferences": {
+            "type": "object",
+            "description": "Career Preferences validated by career-core.ts; does not change global account preferences"
+          },
+          "status": {
+            "enum": [
+              "active",
+              "completed",
+              "archived"
+            ]
+          },
+          "targetDate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "confirmed": {
+            "type": "boolean",
+            "const": true
+          },
+          "expectedRevision": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "confirmed"
+        ]
+      },
+      "Learning": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "goalId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "skill": {
+            "type": "string"
+          },
+          "sourceJobIds": {
+            "type": "array",
+            "maxItems": 20,
+            "items": {
+              "type": "string"
+            }
+          },
+          "resourceUrl": {
+            "type": "string"
+          },
+          "dueAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "planned",
+              "in_progress",
+              "completed",
+              "archived"
+            ]
+          },
+          "confirmed": {
+            "type": "boolean",
+            "const": true
+          },
+          "expectedRevision": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "confirmed"
+        ]
+      },
+      "Recruiter": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "company": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "profileUrl": {
+            "type": "string"
+          },
+          "jobIds": {
+            "type": "array",
+            "maxItems": 20,
+            "items": {
+              "type": "string"
+            }
+          },
+          "nextFollowUpAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "draft": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "active",
+              "archived"
+            ]
+          },
+          "confirmed": {
+            "type": "boolean",
+            "const": true
+          },
+          "expectedRevision": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "confirmed"
+        ]
+      },
+      "Interview": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "company": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "scheduledAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "timeZone": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "technical",
+              "behavioural",
+              "hr",
+              "managerial",
+              "panel",
+              "assessment",
+              "other"
+            ]
+          },
+          "meetingUrl": {
+            "type": "string"
+          },
+          "recruiterId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "jobId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "resumeId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "notes": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "scheduled",
+              "completed",
+              "cancelled"
+            ]
+          },
+          "confirmed": {
+            "type": "boolean",
+            "const": true
+          },
+          "expectedRevision": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "confirmed"
+        ]
+      },
+      "DeleteConfirmed": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "confirmed": {
+            "type": "boolean",
+            "const": true
+          },
+          "expectedRevision": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "confirmed",
+          "expectedRevision"
+        ]
+      },
+      "Variant": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "targetRole": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "enum": [
+                  "general",
+                  "master",
+                  "target"
+                ]
+              },
+              "template": {
+                "enum": [
+                  "classic",
+                  "modern",
+                  "compact"
+                ]
+              },
+              "sectionOrder": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 30
+              },
+              "hiddenSections": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 30
+              },
+              "linkedJobId": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "parentResumeId": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "userReviewed": {
+                "type": "boolean",
+                "const": true
+              }
+            },
+            "required": [
+              "userReviewed"
+            ]
+          }
+        },
+        "required": [
+          "title",
+          "metadata"
+        ]
+      },
+      "PackageCreate": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "jobId": {
+            "type": "string"
+          },
+          "screeningKeys": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 30
+          }
+        },
+        "required": [
+          "jobId"
+        ]
+      },
+      "PackageEdit": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "confirmed": {
+            "type": "boolean",
+            "const": true
+          },
+          "expectedRevision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "coverLetterText": {
+            "type": "string"
+          },
+          "personalDataFields": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "screeningKeys": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 30
+          }
+        },
+        "required": [
+          "confirmed",
+          "expectedRevision"
+        ]
+      },
+      "Approval": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "confirmed": {
+            "type": "boolean",
+            "const": true
+          },
+          "expectedRevision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "reviewedHash": {
+            "type": "string"
+          },
+          "acknowledgedUnknowns": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "confirmed",
+          "expectedRevision",
+          "reviewedHash"
+        ]
+      },
+      "Execution": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "confirmed": {
+            "type": "boolean",
+            "const": true
+          },
+          "expectedRevision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "reviewedHash": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "confirmed",
+          "expectedRevision",
+          "reviewedHash"
+        ]
+      }
+    }
+  }
+}

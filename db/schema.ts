@@ -26,6 +26,7 @@ export const resumeVersions = sqliteTable("career_resume_versions", {
   parentId: text("parent_id"),
   documentId: text("document_id"),
   profileRevision: integer("profile_revision").notNull(),
+  metadata: text("metadata").notNull().default("{}"), archived: integer("archived").notNull().default(0),
   createdAt: text("created_at").notNull(),
 }, (t) => [uniqueIndex("resume_owner_version").on(t.userId, t.version), index("resume_owner").on(t.userId)]);
 export const manualJobs = sqliteTable("career_jobs", {
@@ -146,7 +147,9 @@ export const agentSettings = sqliteTable("career_agent_settings", {
 });
 export const savedSearches = sqliteTable("career_saved_searches", {
   id: text("id").primaryKey(), userId: text("user_id").notNull().references(() => careerAccounts.userId, { onDelete: "cascade" }),
-  label: text("label").notNull(), goal: text("goal").notNull().default(""), preferences: text("preferences").notNull(), enabled: integer("enabled").notNull().default(1), revision: integer("revision").notNull().default(0), createdAt: text("created_at").notNull(), updatedAt: text("updated_at").notNull(),
+  label: text("label").notNull(), goal: text("goal").notNull().default(""), preferences: text("preferences").notNull(), enabled: integer("enabled").notNull().default(1),
+  resumeId: text("resume_id"), status: text("status").notNull().default("active"), frequency: text("frequency").notNull().default("daily"), minExperience: integer("min_experience"), maxExperience: integer("max_experience"), mandatoryExperience: integer("mandatory_experience").notNull().default(0),
+  revision: integer("revision").notNull().default(0), createdAt: text("created_at").notNull(), updatedAt: text("updated_at").notNull(),
 }, t => [index("saved_search_owner").on(t.userId)]);
 export const vaultFacts = sqliteTable("career_vault_facts", {
   id: text("id").primaryKey(), userId: text("user_id").notNull().references(() => careerAccounts.userId, { onDelete: "cascade" }), key: text("key").notNull(), label: text("label").notNull(), value: text("value"), classification: text("classification").notNull(), source: text("source").notNull(), revision: integer("revision").notNull().default(0), confirmedAt: text("confirmed_at"), createdAt: text("created_at").notNull(), updatedAt: text("updated_at").notNull(),
@@ -155,7 +158,7 @@ export const vaultHistory = sqliteTable("career_vault_history", {
   id: text("id").primaryKey(), userId: text("user_id").notNull().references(() => careerAccounts.userId, { onDelete: "cascade" }), key: text("key").notNull(), data: text("data").notNull(), createdAt: text("created_at").notNull(),
 }, t => [index("vault_history_owner").on(t.userId)]);
 export const confirmedAnswers = sqliteTable("career_confirmed_answers", {
-  id: text("id").primaryKey(), userId: text("user_id").notNull().references(() => careerAccounts.userId, { onDelete: "cascade" }), key: text("key").notNull(), question: text("question").notNull(), value: text("value").notNull(), revision: integer("revision").notNull().default(0), confirmedAt: text("confirmed_at").notNull(), createdAt: text("created_at").notNull(), updatedAt: text("updated_at").notNull(),
+  id: text("id").primaryKey(), userId: text("user_id").notNull().references(() => careerAccounts.userId, { onDelete: "cascade" }), key: text("key").notNull(), question: text("question").notNull(), value: text("value").notNull(), revision: integer("revision").notNull().default(0), confirmedAt: text("confirmed_at").notNull(), validUntil: text("valid_until"), reconfirmAt: text("reconfirm_at"), createdAt: text("created_at").notNull(), updatedAt: text("updated_at").notNull(),
 }, t => [uniqueIndex("answer_owner_key").on(t.userId, t.key)]);
 export const answerHistory = sqliteTable("career_answer_history", {
   id: text("id").primaryKey(), userId: text("user_id").notNull().references(() => careerAccounts.userId, { onDelete: "cascade" }), key: text("key").notNull(), data: text("data").notNull(), createdAt: text("created_at").notNull(),
@@ -181,3 +184,23 @@ export const packageApprovals = sqliteTable("career_package_approvals", {
 export const packageHistory = sqliteTable("career_package_history", {
   id: text("id").primaryKey(), userId: text("user_id").notNull().references(() => careerAccounts.userId, { onDelete: "cascade" }), packageId: text("package_id").notNull().references(() => applicationPackages.id, { onDelete: "cascade" }), revision: integer("revision").notNull(), snapshot: text("snapshot").notNull(), snapshotHash: text("snapshot_hash").notNull(), unknowns: text("unknowns").notNull(), createdAt: text("created_at").notNull(),
 }, t => [uniqueIndex("package_history_owner_revision").on(t.userId, t.packageId, t.revision)]);
+
+export const careerGoals = sqliteTable("career_goals", {
+  id: text("id").primaryKey(), userId: text("user_id").notNull().references(() => careerAccounts.userId, { onDelete: "cascade" }),
+  title: text("title").notNull(), targetRole: text("target_role").notNull(), description: text("description").notNull(), preferences: text("preferences").notNull(), status: text("status").notNull(), targetDate: text("target_date"), revision: integer("revision").notNull().default(0), createdAt: text("created_at").notNull(), updatedAt: text("updated_at").notNull(),
+}, t => [index("goal_owner_status").on(t.userId, t.status)]);
+export const recruiters = sqliteTable("career_recruiters", {
+  id: text("id").primaryKey(), userId: text("user_id").notNull().references(() => careerAccounts.userId, { onDelete: "cascade" }), name: text("name").notNull(), company: text("company").notNull(), email: text("email").notNull(), phone: text("phone").notNull(), profileUrl: text("profile_url").notNull(), jobIds: text("job_ids").notNull(), lastInteractionAt: text("last_interaction_at"), nextFollowUpAt: text("next_follow_up_at"), notes: text("notes").notNull(), draft: text("draft").notNull(), status: text("status").notNull(), revision: integer("revision").notNull().default(0), createdAt: text("created_at").notNull(), updatedAt: text("updated_at").notNull(),
+}, t => [index("recruiter_owner_followup").on(t.userId, t.nextFollowUpAt)]);
+export const recruiterInteractions = sqliteTable("career_recruiter_interactions", {
+  id: text("id").primaryKey(), userId: text("user_id").notNull().references(() => careerAccounts.userId, { onDelete: "cascade" }), recruiterId: text("recruiter_id").notNull().references(() => recruiters.id, { onDelete: "cascade" }), type: text("type").notNull(), text: text("text").notNull(), occurredAt: text("occurred_at").notNull(), createdAt: text("created_at").notNull(),
+}, t => [index("interaction_owner_recruiter").on(t.userId, t.recruiterId)]);
+export const interviews = sqliteTable("career_interviews", {
+  id: text("id").primaryKey(), userId: text("user_id").notNull().references(() => careerAccounts.userId, { onDelete: "cascade" }), company: text("company").notNull(), role: text("role").notNull(), scheduledAt: text("scheduled_at").notNull(), timeZone: text("time_zone").notNull(), type: text("type").notNull(), meetingUrl: text("meeting_url").notNull(), recruiterId: text("recruiter_id").references(() => recruiters.id, { onDelete: "set null" }), jobId: text("job_id"), resumeId: text("resume_id"), notes: text("notes").notNull(), status: text("status").notNull(), source: text("source").notNull().default("manual"), revision: integer("revision").notNull().default(0), createdAt: text("created_at").notNull(), updatedAt: text("updated_at").notNull(),
+}, t => [index("interview_owner_date").on(t.userId, t.scheduledAt)]);
+export const learningTasks = sqliteTable("career_learning_tasks", {
+  id: text("id").primaryKey(), userId: text("user_id").notNull().references(() => careerAccounts.userId, { onDelete: "cascade" }), goalId: text("goal_id").references(() => careerGoals.id, { onDelete: "set null" }), title: text("title").notNull(), skill: text("skill").notNull(), sourceJobIds: text("source_job_ids").notNull(), resourceUrl: text("resource_url").notNull(), dueAt: text("due_at"), notes: text("notes").notNull(), status: text("status").notNull(), revision: integer("revision").notNull().default(0), createdAt: text("created_at").notNull(), updatedAt: text("updated_at").notNull(),
+}, t => [index("learning_owner_status").on(t.userId, t.status)]);
+export const platformHistory = sqliteTable("career_platform_history", {
+  id: text("id").primaryKey(), userId: text("user_id").notNull().references(() => careerAccounts.userId, { onDelete: "cascade" }), kind: text("kind").notNull(), entityId: text("entity_id").notNull(), revision: integer("revision").notNull(), action: text("action").notNull(), data: text("data").notNull(), createdAt: text("created_at").notNull(),
+}, t => [index("platform_history_owner").on(t.userId, t.createdAt)]);

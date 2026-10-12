@@ -1,15 +1,19 @@
 import { getChatGPTUser } from "../../../chatgpt-auth";
 import { env } from "cloudflare:workers";
-import { CareerError, INTEGRATIONS, assertMutationRequest, assertSameOrigin, disabledFeatureForPath, keys, readJsonBounded, string } from "../../../../lib/career-core";
+import { CareerError, INTEGRATIONS, assertMutationRequest, assertSameOrigin, disabledFeatureForPath, keys, readJsonBounded, string, strings } from "../../../../lib/career-core";
 import { CareerStore } from "../../../../lib/career-store";
 import { CareerAgentStore } from "../../../../lib/career-agent-store";
+import { CareerPlatformStore } from "../../../../lib/career-platform-store";
 import { getCareerAgentState, startCareerAgentRun, executeCareerAgentRun, runCareerAgentScheduler, verifyOwnedJobs, applyOwnedJobFeedback } from "../../../../lib/career-orchestrator";
 import { rankAgentJob } from "../../../../lib/career-agent-matching";
 import type { AgentId, AgentCategory } from "../../../../lib/career-agent-contract";
+import { jobScreeningKey } from "../../../../lib/career-agent-contract";
 import { CareerDocumentService, documentAvailability } from "../../../../lib/career-documents";
 import type { DocumentEnv } from "../../../../lib/career-documents";
 import { aiAvailability, buildAIContext, generateCareerAI, validateAIRequest } from "../../../../lib/career-ai";
 import type { CareerAIEnv } from "../../../../lib/career-ai";
+import { analyzeResumeFacts, resolveAgentModel } from "../../../../lib/career-intelligence";
+import { analyzeResumeStructure, defaultResumeMetadata, exportCareerText, renderResumeSections, resumeDifference, splitResumeSections, validateResumeMetadata } from "../../../../lib/career-resume-tools";
 import { approvedGreenhouseBoards, emailProviderReady, getProviderIntegrationState, refreshOwnedJobs, whatsappProviderReady } from "../../../../lib/career-providers";
 import type { CareerProviderEnv } from "../../../../lib/career-providers";
 import { assertSchedulerRequest, confirmDestinationVerification, getAlertState, handleProviderCallback, handleUnsubscribe, requestDestinationVerification, runAlertScheduler } from "../../../../lib/career-alerts";
@@ -23,16 +27,17 @@ async function state(store:CareerStore) {
   const agentStore=new CareerAgentStore(store),confirmedProfile=await agentStore.confirmedProfile();
   const verifiedFacts=await agentStore.getVault();
   const agentic=await getCareerAgentState(agentStore,runtime);
+  const platform=await new CareerPlatformStore(store,agentStore).state();
   const verification=verifyOwnedJobs(base.jobs);
   const active=base.resumes.find(resume=>resume.active);
   const jobs=base.jobs.map(job=>{
     const ranked=rankAgentJob(job,confirmedProfile,base.preferences,active?.text,verifiedFacts);
     ranked.relevance.profileRevision=base.revision;ranked.relevance.resumeVersion=active?.version??null;
     const verified=verification.find(record=>record.id===job.id);
-    if(verified?.duplicateOf){ranked.relevance.eligible=false;ranked.relevance.score=null;ranked.relevance.label="Duplicate listing";ranked.relevance.excludedReasons.push("Same original application destination as another listing; excluded from repeated preparation.");}
+    if(verified?.duplicateOf){ranked.relevance.eligible=false;ranked.relevance.score=null;ranked.relevance.label="Duplicate listing";ranked.relevance.excludedReasons.push("Same original application destination as another listing; excluded from repeated preparation.");ranked.opportunityPriority={...ranked.opportunityPriority,eligible:false,level:"Low",points:0,reasons:["Duplicate application destination; excluded from repeated preparation."]};}
     return {...job,...applyOwnedJobFeedback(ranked,job.id,agentic.feedback),verification:verified};
   }).sort((a,b)=>Number(b.relevance.eligible)-Number(a.relevance.eligible)||(b.rankingScore??-1)-(a.rankingScore??-1));
-  return {...base,jobs,...alerts,agentic,metrics:{...base.metrics,suitableJobs:jobs.filter(job=>job.relevance.eligible).length},notifications:{...base.notifications,nextAlert:alerts.nextAlert},integrations:{...INTEGRATIONS,...getProviderIntegrationState(runtime),ai:aiAvailability(runtime),documents:documentAvailability(runtime)}};
+  return {...base,jobs,...alerts,agentic,platform,metrics:{...base.metrics,suitableJobs:jobs.filter(job=>job.relevance.eligible).length},notifications:{...base.notifications,nextAlert:alerts.nextAlert},integrations:{...INTEGRATIONS,...getProviderIntegrationState(runtime),ai:aiAvailability(runtime),documents:documentAvailability(runtime)}};
 }
 /** An external attempt cannot start unless current permissions and its private
  * immutable data manifest are durably recorded. Service secrets are excluded. */
@@ -78,15 +83,39 @@ async function handle(request: Request) {
     const store = new CareerStore(user, runtime.DB); await store.ensureAccount();
     const agents=new CareerAgentStore(store);
     await agents.ensureSettings();
-    const documentEnv={...runtime,CAREER_DOCUMENT_PROCESSOR:runtime.CAREER_DOCUMENT_PROCESSOR?{fetch:async(input:Request)=>externalAction(agents,"resume_intelligence","documents","private isolated document processor",{documentId:input.headers.get("X-Document-Id"),sha256:input.headers.get("X-Document-SHA256"),contentType:input.headers.get("Content-Type")},()=>runtime.CAREER_DOCUMENT_PROCESSOR!.fetch(input))}:undefined};
+    const platform=new CareerPlatformStore(store,agents);
+    const documentEnv={...runtime,CAREER_DOCUMENT_PROCESSOR:runtime.CAREER_DOCUMENT_PROCESSOR?{fetch:async(input:Request)=>externalAction(agents,"resume_intelligence","documents","private isolated document processor",{documentId:input.headers.get("X-Document-Id"),sha256:input.headers.get("X-Document-SHA256"),contentType:input.headers.get("Content-Type"),documentContents:"Original document bytes; hash identifies the immutable upload"},()=>runtime.CAREER_DOCUMENT_PROCESSOR!.fetch(input))}:undefined};
     const documents=new CareerDocumentService(store,documentEnv as DocumentEnv);
     if (!mutation && path.join("/") === "state") return json(await state(store));
-    if (!mutation && path.join("/") === "export") return json({...await store.export(),agentic:await agents.exportData()}, 200, { "Content-Disposition": "attachment; filename=dnyanganga-career-export.json" });
+    if (!mutation && path.join("/") === "export") return json({...await store.export(),agentic:await agents.exportData(),platform:await platform.exportData()}, 200, { "Content-Disposition": "attachment; filename=dnyanganga-career-export.json" });
+    if (!mutation && path.join("/") === "platform/state") return json({platform:await platform.state()});
+    if (!mutation && path[0]==="platform" && path.length===4 && path[3]==="history") {
+      const kinds={goals:"goal",learning:"learning",recruiters:"recruiter",interviews:"interview"} as const;
+      if(!Object.hasOwn(kinds,path[1]))throw new CareerError(404,"NOT_FOUND","This private record was not found.");
+      const kind=kinds[path[1] as keyof typeof kinds];
+      return json({history:await platform.history(kind,path[2])});
+    }
     if (!mutation && path.join("/") === "agents/state") return json({agentic:await getCareerAgentState(agents,runtime)});
     if (!mutation && path[0]==="agents" && path[1]==="packages" && path[2] && path[3]==="download" && path.length===4) return json(await agents.exportPackage(path[2]),200,{"Content-Disposition":"attachment; filename=dnyanganga-application-package.json"});
     if (!mutation && path[0] === "resumes" && path.length === 3 && path[2] === "download") {
       const resume = await store.ownedResume(path[1]);
-      return new Response(resume.content, { headers: { ...privateHeaders, "Content-Type": "text/plain; charset=utf-8", "Content-Disposition": `attachment; filename=resume-v${resume.version}.txt` } });
+      const format = new URL(request.url).searchParams.get("format") ?? "txt";
+      if (!["pdf", "docx", "txt"].includes(format)) throw new CareerError(400,"INVALID_FORMAT","Choose PDF, DOCX or text.");
+      await store.rateLimit();
+      const metadata = { ...defaultResumeMetadata(), ...(resume.metadata ? JSON.parse(resume.metadata) : {}) };
+      const bytes = await exportCareerText(resume.content,resume.title,format as "pdf"|"docx"|"txt",metadata.template);
+      await store.audit("resume.exported",resume.id).run();
+      return new Response(bytes.buffer as ArrayBuffer, { headers: { ...privateHeaders, "Content-Type": format === "pdf" ? "application/pdf" : format === "docx" ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document" : "text/plain; charset=utf-8", "Content-Disposition": `attachment; filename=resume-v${resume.version}.${format}` } });
+    }
+    if (!mutation && path[0] === "resumes" && path.length === 3 && path[2] === "analysis") {
+      await store.rateLimit(); await agents.assertCurrentAllowed("documents");
+      const resume = await store.ownedResume(path[1]), query=new URL(request.url).searchParams;
+      const job=query.get("jobId")?await store.ownedJob(query.get("jobId")!):null;
+      const comparison=query.get("compareTo")?await store.ownedResume(query.get("compareTo")!):null;
+      const profile=await agents.confirmedProfile();
+      const factCheck=analyzeResumeFacts(resume.content,profile,await agents.getVault());
+      await agents.appendManifest("resume_fact_checker","documents","completed",{resumeId:resume.id,resumeVersion:resume.version,jobId:job?.id??null,flags:factCheck.flags,authorizationBasis:"Candidate requested local consistency review",externalCalls:0});
+      return json({resumeId:resume.id,version:resume.version,analysis:analyzeResumeStructure(resume.content,profile,job),sections:splitResumeSections(resume.content),factCheck,difference:comparison?resumeDifference(comparison.content,resume.content):null,compareResumeId:comparison?.id??null});
     }
     if(!mutation&&path[0]==="documents"&&path.length===3&&path[2]==="preview")return json(await documents.preview(path[1]));
     if(!mutation&&path[0]==="documents"&&path.length===3&&path[2]==="original") {
@@ -96,15 +125,39 @@ async function handle(request: Request) {
     if(!mutation&&path[0]==="generated-documents"&&path.length===3&&path[2]==="download") {
       const row=await store.query("SELECT data FROM career_generated_documents WHERE id=? AND user_id=?",path[1],user.userId).first<{data:string}>();
       if(!row)throw new CareerError(404,"NOT_FOUND","The document was not found.");
-      return new Response(JSON.parse(row.data).text,{headers:{...privateHeaders,"Content-Type":"text/plain; charset=utf-8","Content-Disposition":"attachment; filename=cover-letter.txt"}});
+      const document=JSON.parse(row.data),format=new URL(request.url).searchParams.get("format")??"txt";
+      if(!["txt","pdf","docx"].includes(format))throw new CareerError(400,"INVALID_FORMAT","Choose PDF, DOCX or text.");
+      await store.rateLimit();const bytes=await exportCareerText(document.text,document.title??"Reviewed cover letter",format as "pdf"|"docx"|"txt");
+      await store.audit("cover_letter.exported",path[1]).run();
+      return new Response(bytes.buffer as ArrayBuffer,{headers:{...privateHeaders,"Content-Type":format==="pdf"?"application/pdf":format==="docx"?"application/vnd.openxmlformats-officedocument.wordprocessingml.document":"text/plain; charset=utf-8","Content-Disposition":`attachment; filename=cover-letter.${format}`}});
     }
     if (!mutation) return json({ error: "This page was not found.", code: "NOT_FOUND" }, 404);
     await store.rateLimit();
-    if(rawUpload){const id=await documents.upload(request);return json({ok:true,id,state:await state(store)},201);}
+    if(rawUpload){
+      const id=await documents.upload(request),document=await documents.owned(id);let projection:unknown=null;
+      if(["review_required","confirmed"].includes(document.status)) {
+        try{projection=await agents.recordDocumentExtraction(id);}
+        catch{projection={documentId:id,verifiedAutomatically:false,warnings:["The original and extracted preview are preserved, but vault proposals could not be recorded. Review the document fields manually before confirming any change."]};}
+      }
+      return json({ok:true,id,projection,state:await state(store)},201);
+    }
     const payload = await readJsonBounded(request);
     const resource = path[0]; const id = path[1]; const action = path[2];
     let createdId: string | undefined;let extra:Record<string,unknown>={};
-    if(resource==="agents") {
+    if(resource==="platform") {
+      const group=path[1],entity=path[2];
+      const actions={goals:{save:(value:unknown,id?:string)=>platform.saveGoal(value,id),remove:(id:string,value:unknown)=>platform.deleteGoal(id,value)},learning:{save:(value:unknown,id?:string)=>platform.saveLearningTask(value,id),remove:(id:string,value:unknown)=>platform.deleteLearningTask(id,value)},recruiters:{save:(value:unknown,id?:string)=>platform.saveRecruiter(value,id),remove:(id:string,value:unknown)=>platform.deleteRecruiter(id,value)},interviews:{save:(value:unknown,id?:string)=>platform.saveInterview(value,id),remove:(id:string,value:unknown)=>platform.deleteInterview(id,value)}};
+      if(group==="recruiters"&&entity&&path[3]==="interactions"&&path.length===4&&request.method==="POST")extra={record:await platform.saveInteraction(entity,payload)};
+      else {
+        if(!Object.hasOwn(actions,group))throw new CareerError(404,"NOT_FOUND","This private record was not found.");
+        const action=actions[group as keyof typeof actions];
+        if(request.method==="POST"&&path.length===2)extra={record:await action.save(payload)};
+        else if(request.method==="PATCH"&&entity&&path.length===3)extra={record:await action.save(payload,entity)};
+        else if(request.method==="DELETE"&&entity&&path.length===3)extra=await action.remove(entity,payload);
+        else throw new CareerError(404,"NOT_FOUND","This private record was not found.");
+      }
+    }
+    else if(resource==="agents") {
       const group=path[1],entity=path[2],verb=path[3];
       if(request.method==="PUT"&&group==="settings"&&path.length===2)await agents.saveSettings(payload);
       else if(request.method==="POST"&&group==="searches"&&path.length===2)extra={search:await agents.saveSearch(payload)};
@@ -114,8 +167,9 @@ async function handle(request: Request) {
       else if(request.method==="POST"&&group==="answers"&&path.length===2)extra={answer:await agents.saveAnswer(payload)};
       else if(request.method==="POST"&&group==="feedback"&&path.length===2)extra={feedback:await agents.saveFeedback(payload)};
       else if(request.method==="POST"&&group==="packages"&&path.length===2){
-        keys(payload,["jobId"]);
-        extra={package:await agents.savePackage({jobId:string(payload.jobId,"Job",100,true),screeningAnswerIds:(await agents.getAnswers()).map(answer=>answer.key),missingQuestions:[{key:"job_specific_screening",question:"Which screening questions does this employer actually require? Confirm the questions and answers before using this package."}]},{serverTrusted:true})};
+        keys(payload,["jobId","screeningKeys"]);
+        const jobId=string(payload.jobId,"Job",100,true),job=await store.ownedJob(jobId);
+        extra={package:await agents.savePackage({jobId,screeningKeys:strings(payload.screeningKeys,"Selected answers",30),missingQuestions:[{key:jobScreeningKey(jobId),question:`Which screening questions does ${job.company} require for ${job.title}? Confirm the actual questions and answers before using this package.`}]},{serverTrusted:true})};
       }
       else if(request.method==="POST"&&["runs","run"].includes(group)&&path.length===2) {
         keys(payload,["goal","searchId","searchIds","idempotencyKey"]);
@@ -129,6 +183,17 @@ async function handle(request: Request) {
     }
     else if (request.method === "PUT" && resource === "profile" && path.length === 1) await store.saveProfile(payload);
     else if (request.method === "PUT" && resource === "draft" && path.length === 1) await store.saveDraft(payload);
+    else if (request.method === "POST" && resource === "resumes" && id && action === "variant" && path.length === 3) {
+      keys(payload,["title","targetRole","metadata"]);const original=await store.ownedResume(id);
+      const metadata=validateResumeMetadata(payload.metadata);
+      if(metadata.parentResumeId&&metadata.parentResumeId!==id)throw new CareerError(400,"INVALID_PARENT","The variant must refer to the selected original version.");
+      if(metadata.linkedJobId)await store.ownedJob(metadata.linkedJobId);
+      metadata.parentResumeId=id;
+      const sections=splitResumeSections(original.content),content=renderResumeSections(sections,metadata.sectionOrder,metadata.hiddenSections);
+      createdId=await store.saveResume({title:string(payload.title,"Version name",160,true),targetRole:string(payload.targetRole??original.target_role,"Target role",160),text:content,source:"manual"},undefined,{metadata:JSON.stringify(metadata),parentId:id});
+      await agents.appendManifest("resume_tailoring","documents","completed",{originalResumeId:id,newResumeId:createdId,linkedJobId:metadata.linkedJobId,changes:"Candidate-reviewed section order/visibility and template; no invented wording",authorizationBasis:"Explicit candidate document review"});
+    }
+    else if (request.method === "PATCH" && resource === "resumes" && id && action === "archive" && path.length === 3) await store.archiveResume(id,payload);
     else if (request.method === "DELETE" && resource === "draft" && path.length === 1) await store.deleteDraft(payload);
     else if (request.method === "POST" && resource === "resumes" && path.length === 1) createdId = await store.saveResume(payload);
     else if (request.method === "POST" && resource === "resumes" && id && action === "active" && path.length === 3) { keys(payload, []); await store.setActiveResume(id); }
@@ -173,7 +238,7 @@ async function handle(request: Request) {
       if(previous&&JSON.stringify(previous.data.result.context)!==JSON.stringify(basis))throw new CareerError(409,"SESSION_CONTEXT_CHANGED","Your career context changed. Start a new session for current details.");
       let externalStarted=false;
       const result=await (async()=>{
-        try {return await generateCareerAI({...input,context,history:boundedHistory(previous?.data.history??[])},runtime,store.aiBudget(),undefined,async body=>{
+        try {return await generateCareerAI({...input,context,history:boundedHistory(previous?.data.history??[])},resolveAgentModel(agent,runtime).env,store.aiBudget(),undefined,async body=>{
           assertJobAIRights();
           await agents.appendManifest(agent,category,"requested",{destination:"https://api.openai.com/v1/responses",authorizationBasis:"Authenticated candidate action and current automation policy",dataSent:body});
           await agents.assertCurrentAllowed(category);externalStarted=true;

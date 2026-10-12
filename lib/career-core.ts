@@ -6,7 +6,7 @@ export class CareerError extends Error {
     super(message); this.status = status; this.code = code;
   }
 }
-export const APPLICATION_STATUSES = ["Saved", "Preparing", "Needs Review", "Needs Your Input", "Submission Unconfirmed", "Applied", "Interview", "Offer", "Rejected", "Withdrawn", "Closed"] as const;
+export const APPLICATION_STATUSES = ["Saved", "Preparing", "Needs Review", "Needs Your Input", "Needs Input", "Ready", "Submission Unconfirmed", "Applied", "Interview", "Offer", "Rejected", "Withdrawn", "Failed", "Closed"] as const;
 export type ApplicationStatus = typeof APPLICATION_STATUSES[number];
 export const ARRANGEMENTS = ["Remote", "Hybrid", "On-site"] as const;
 export const INTEGRATIONS = {
@@ -32,6 +32,7 @@ export type Profile = {
   currentCity: string; state: string; country: string; summary: string; workHistory: string;
   education: string; projects: string; certifications: string; skills: string[]; portfolio: string;
   currentRole: string; totalExperience: number; relevantExperience: number;
+  languages?: string[]; linkedin?: string; currentCompany?: string;
 };
 export type Preferences = {
   targetRoles: string[]; industries: string[]; preferredCities: string[]; relocate: boolean;
@@ -40,6 +41,10 @@ export type Preferences = {
   salaryCurrency: string; salaryBasis: "annual" | "monthly"; noticePeriod: string;
   excludeCompanies: string[]; excludeRoles: string[]; excludeLocations: string[];
   mandatoryLocation: boolean; mandatoryWorkArrangement: boolean; mandatoryEmploymentType: boolean;
+  preferredCountries?: string[]; mandatoryCountry?: boolean; excludeIndustries?: string[];
+  joiningAvailability?: string; travelPreference?: string;
+  mandatoryRole?: boolean; mandatoryIndustry?: boolean; mandatorySkills?: boolean;
+  mandatoryExperience?: boolean; mandatoryQualifications?: boolean;
 };
 export type NotificationSettings = {
   emailEnabled: boolean; whatsappEnabled: boolean; emailConsent: boolean; whatsappConsent: boolean;
@@ -52,15 +57,15 @@ export type ManualJob = {
   title: string; company: string; location: string | null; workArrangement: string | null; employmentType: string | null;
   minExperience: number | null; maxExperience: number | null; salary: string; requirements: string[];
   salaryMin: number | null; salaryMax: number | null; salaryCurrency: string | null; salaryBasis: "annual" | "monthly" | null;
-  industry?: string | null; seniority?: string | null; responsibilities?: string[];
+  industry?: string | null; seniority?: string | null; responsibilities?: string[]; country?: string | null; qualifications?: string[];
   description: string; url: string; postedAt: string | null; closed: boolean;
 };
 
 export function defaultProfile(email = "", fullName = ""): Profile {
-  return { fullName, email, headline: "", phone: "", whatsapp: "", currentCity: "", state: "", country: "India", summary: "", workHistory: "", education: "", projects: "", certifications: "", skills: [], portfolio: "", currentRole: "", totalExperience: 0, relevantExperience: 0 };
+  return { fullName, email, headline: "", phone: "", whatsapp: "", currentCity: "", state: "", country: "India", summary: "", workHistory: "", education: "", projects: "", certifications: "", skills: [], portfolio: "", currentRole: "", totalExperience: 0, relevantExperience: 0, languages: [], linkedin: "", currentCompany: "" };
 }
 export function defaultPreferences(): Preferences {
-  return { targetRoles: [], industries: [], preferredCities: [], relocate: false, workArrangements: [], employmentTypes: [], salaryAmount: null, expectedSalaryMin: null, expectedSalaryMax: null, mandatorySalary: false, salaryCurrency: "INR", salaryBasis: "annual", noticePeriod: "", excludeCompanies: [], excludeRoles: [], excludeLocations: [], mandatoryLocation: true, mandatoryWorkArrangement: true, mandatoryEmploymentType: true };
+  return { targetRoles: [], industries: [], preferredCities: [], relocate: false, workArrangements: [], employmentTypes: [], salaryAmount: null, expectedSalaryMin: null, expectedSalaryMax: null, mandatorySalary: false, salaryCurrency: "INR", salaryBasis: "annual", noticePeriod: "", excludeCompanies: [], excludeRoles: [], excludeLocations: [], mandatoryLocation: true, mandatoryWorkArrangement: true, mandatoryEmploymentType: true, preferredCountries: [], mandatoryCountry: false, excludeIndustries: [], joiningAvailability: "", travelPreference: "", mandatoryRole: false, mandatoryIndustry: false, mandatorySkills: false, mandatoryExperience: false, mandatoryQualifications: false };
 }
 export function defaultNotifications(): NotificationSettings {
   return { emailEnabled: false, whatsappEnabled: false, emailConsent: false, whatsappConsent: false, timeZone: "Asia/Kolkata", dispatchTime: "08:00", paused: true, consentRecordedAt: null, emailConsentRecordedAt: null, whatsappConsentRecordedAt: null, emailVerified: false, whatsappVerified: false, nextAlert: null, maxJobsPerDigest: 5 };
@@ -108,13 +113,15 @@ export function validateProfile(value: unknown, identityEmail: string): Profile 
   const input = object(value); keys(input, Object.keys(defaultProfile()));
   if (input.email !== undefined && input.email !== identityEmail) throw new CareerError(400, "IDENTITY_READ_ONLY", "The sign-in email is managed by your identity provider.");
   const output = defaultProfile(identityEmail);
-  for (const key of ["fullName", "headline", "currentCity", "state", "country", "currentRole"] as const) output[key] = string(input[key], key, 160);
+  for (const key of ["fullName", "headline", "currentCity", "state", "country", "currentRole", "currentCompany"] as const) output[key] = string(input[key], key, 160);
   for (const key of ["summary", "workHistory", "education", "projects", "certifications"] as const) output[key] = string(input[key], key, 10000);
   for (const key of ["phone", "whatsapp"] as const) {
     output[key] = string(input[key], key, 30);
     if (output[key] && !/^\+[1-9][\d ()-]{6,25}$/.test(output[key])) throw new CareerError(400, "INVALID_PHONE", "Phone numbers must include a country code, for example +91.");
   }
   output.portfolio = safePublicLink(input.portfolio);
+  output.linkedin = safePublicLink(input.linkedin);
+  output.languages = strings(input.languages, "Languages", 20);
   output.skills = strings(input.skills, "Skills");
   output.totalExperience = number(input.totalExperience, "Total experience");
   output.relevantExperience = number(input.relevantExperience, "Relevant experience");
@@ -124,9 +131,15 @@ export function validateProfile(value: unknown, identityEmail: string): Profile 
 export function validatePreferences(value: unknown): Preferences {
   const input = object(value); const output = defaultPreferences(); keys(input, Object.keys(output));
   for (const key of ["targetRoles", "industries", "preferredCities", "employmentTypes", "excludeCompanies", "excludeRoles", "excludeLocations"] as const) output[key] = strings(input[key], key, 15);
+  output.preferredCountries = strings(input.preferredCountries, "Preferred countries", 15);
+  output.excludeIndustries = strings(input.excludeIndustries, "Excluded industries", 15);
   output.workArrangements = strings(input.workArrangements, "Work arrangements", 3);
   if (output.workArrangements.some((x) => !(ARRANGEMENTS as readonly string[]).includes(x))) throw new CareerError(400, "INVALID_INPUT", "Choose Remote, Hybrid, or On-site.");
   for (const key of ["relocate", "mandatoryLocation", "mandatoryWorkArrangement", "mandatoryEmploymentType", "mandatorySalary"] as const) output[key] = boolean(input[key], output[key]);
+  for (const key of ["mandatoryCountry", "mandatoryRole", "mandatoryIndustry", "mandatorySkills", "mandatoryExperience", "mandatoryQualifications"] as const) output[key] = boolean(input[key], false);
+  if (output.mandatoryCountry && !output.preferredCountries.length) throw new CareerError(400, "INVALID_INPUT", "Choose countries before making countries mandatory.");
+  if (output.mandatoryRole && !output.targetRoles.length) throw new CareerError(400, "INVALID_INPUT", "Choose target roles before making roles mandatory.");
+  if (output.mandatoryIndustry && !output.industries.length) throw new CareerError(400, "INVALID_INPUT", "Choose industries before making industries mandatory.");
   output.salaryAmount = input.salaryAmount === undefined || input.salaryAmount === null ? null : number(input.salaryAmount, "Expected salary", 1_000_000_000);
   output.expectedSalaryMin = input.expectedSalaryMin == null ? output.salaryAmount : number(input.expectedSalaryMin, "Minimum expected salary", 1_000_000_000);
   output.expectedSalaryMax = input.expectedSalaryMax == null ? null : number(input.expectedSalaryMax, "Maximum expected salary", 1_000_000_000);
@@ -137,6 +150,8 @@ export function validatePreferences(value: unknown): Preferences {
   if (input.salaryBasis !== undefined && input.salaryBasis !== "annual" && input.salaryBasis !== "monthly") throw new CareerError(400, "INVALID_INPUT", "Salary basis must be annual or monthly.");
   output.salaryBasis = (input.salaryBasis as "annual" | "monthly" | undefined) ?? "annual";
   output.noticePeriod = string(input.noticePeriod, "Availability", 200);
+  output.joiningAvailability = string(input.joiningAvailability, "Joining availability", 200);
+  output.travelPreference = string(input.travelPreference, "Travel preference", 100);
   return output;
 }
 export function validateNotifications(value: unknown, previous: NotificationSettings, now: string, capabilities = { email: false, whatsapp: false }): NotificationSettings {
@@ -160,7 +175,7 @@ export function validateResume(value: unknown) {
   return { title: string(input.title, "Resume title", 160, true), targetRole: string(input.targetRole, "Target role", 160), text: string(input.text, "Resume text", 60000, true), source: "manual" };
 }
 export function validateJob(value: unknown): ManualJob {
-  const input = object(value); keys(input, ["title", "company", "location", "workArrangement", "employmentType", "minExperience", "maxExperience", "salary", "salaryMin", "salaryMax", "salaryCurrency", "salaryBasis", "industry", "seniority", "responsibilities", "requirements", "description", "url", "postedAt", "closed"]);
+  const input = object(value); keys(input, ["title", "company", "location", "workArrangement", "employmentType", "minExperience", "maxExperience", "salary", "salaryMin", "salaryMax", "salaryCurrency", "salaryBasis", "industry", "seniority", "responsibilities", "requirements", "qualifications", "country", "description", "url", "postedAt", "closed"]);
   const workArrangement = string(input.workArrangement, "Work arrangement", 20) || null;
   if (workArrangement && !(ARRANGEMENTS as readonly string[]).includes(workArrangement)) throw new CareerError(400, "INVALID_INPUT", "Choose Remote, Hybrid, or On-site.");
   const minExperience = input.minExperience == null ? null : number(input.minExperience, "Required experience");
@@ -177,7 +192,7 @@ export function validateJob(value: unknown): ManualJob {
   if (salaryBasis !== null && salaryBasis !== "annual" && salaryBasis !== "monthly") throw new CareerError(400, "INVALID_SALARY", "Salary basis must be monthly or annual.");
   if (salaryMin !== null && salaryMax !== null && salaryMax < salaryMin) throw new CareerError(400, "INVALID_SALARY", "Maximum salary cannot be less than minimum salary.");
   if ((salaryMin !== null || salaryMax !== null) && (!salaryCurrency || !salaryBasis)) throw new CareerError(400, "INVALID_SALARY", "A numeric salary needs its currency and monthly or annual basis.");
-  return { title: string(input.title, "Job title", 200, true), company: string(input.company, "Company", 200, true), location: string(input.location, "Location", 200) || null, workArrangement, employmentType: string(input.employmentType, "Employment type", 80) || null, minExperience, maxExperience, salary: string(input.salary, "Salary", 200), salaryMin, salaryMax, salaryCurrency, salaryBasis, industry: string(input.industry, "Industry", 160) || null, seniority: string(input.seniority, "Seniority", 100) || null, responsibilities: strings(input.responsibilities, "Responsibilities", 30), requirements: strings(input.requirements, "Requirements", 50), description: string(input.description, "Job description", 30000), url: safePublicLink(input.url), postedAt, closed: boolean(input.closed) };
+  return { title: string(input.title, "Job title", 200, true), company: string(input.company, "Company", 200, true), location: string(input.location, "Location", 200) || null, country: string(input.country, "Country", 160) || null, qualifications: strings(input.qualifications, "Required qualifications", 30), workArrangement, employmentType: string(input.employmentType, "Employment type", 80) || null, minExperience, maxExperience, salary: string(input.salary, "Salary", 200), salaryMin, salaryMax, salaryCurrency, salaryBasis, industry: string(input.industry, "Industry", 160) || null, seniority: string(input.seniority, "Seniority", 100) || null, responsibilities: strings(input.responsibilities, "Responsibilities", 30), requirements: strings(input.requirements, "Requirements", 50), description: string(input.description, "Job description", 30000), url: safePublicLink(input.url), postedAt, closed: boolean(input.closed) };
 }
 export function validateApplication(value: unknown, previousStatus?: string) {
   const input = object(value); keys(input, ["jobId", "status", "notes", "reminderAt", "resumeId", "confirmedApplied"]);
@@ -232,7 +247,7 @@ export function compareSalary(job: ManualJob, preferences: Preferences) {
   const overlaps = (low === null || jobHigh! >= low) && (high === null || jobLow! <= high);
   return { status: overlaps ? "overlap" : "outside", reason: `Ranges ${overlaps ? "overlap" : "do not overlap"} in ${preferences.salaryCurrency} per ${preferences.salaryBasis}; monthly/annual conversion uses 12 months` };
 }
-export function matchJob(job: ManualJob, profile: Profile, preferences: Preferences, activeResumeText?: string) {
+export function matchJob(job: ManualJob, profile: Profile, preferences: Preferences, activeResumeText?: string, verifiedFacts?: readonly {key:string;classification:string;value:string|null}[]) {
   const excludedReasons: string[] = [];
   const cities = preferences.preferredCities.length ? preferences.preferredCities : profile.currentCity ? [profile.currentCity] : [];
   if (job.closed) excludedReasons.push("Marked closed");
@@ -242,6 +257,10 @@ export function matchJob(job: ManualJob, profile: Profile, preferences: Preferen
   if (containsAny(job.company, preferences.excludeCompanies)) excludedReasons.push("Excluded company");
   if (containsAny(job.title, preferences.excludeRoles)) excludedReasons.push("Excluded role");
   if (containsAny(job.location, preferences.excludeLocations)) excludedReasons.push("Excluded location");
+  if (containsAny(job.industry ?? null, preferences.excludeIndustries ?? [])) excludedReasons.push("Excluded industry");
+  if (preferences.mandatoryCountry && preferences.preferredCountries?.length && !matchesAny(job.country ?? null, preferences.preferredCountries)) excludedReasons.push(job.country ? "Outside mandatory countries" : "Mandatory country cannot be verified");
+  if (preferences.mandatoryRole && preferences.targetRoles.length && !containsAny(job.title, preferences.targetRoles)) excludedReasons.push("Outside mandatory target roles");
+  if (preferences.mandatoryIndustry && preferences.industries.length && !matchesAny(job.industry ?? null, preferences.industries)) excludedReasons.push(job.industry ? "Outside mandatory industries" : "Mandatory industry cannot be verified");
   const salaryComparison = compareSalary(job, preferences);
   if (preferences.mandatorySalary && !["overlap", "not-requested"].includes(salaryComparison.status)) excludedReasons.push(salaryComparison.status === "unknown" ? "Mandatory salary cannot be verified" : "Outside mandatory salary range");
   const confirmed = profile.skills.filter((skill) => activeResumeText === undefined || resumeContainsSkill(activeResumeText, skill));
@@ -258,10 +277,17 @@ export function matchJob(job: ManualJob, profile: Profile, preferences: Preferen
   const roleMatched = preferences.targetRoles.length > 0 && containsAny(job.title, preferences.targetRoles);
   const experienceKnown = job.minExperience != null || job.maxExperience != null;
   const experienceMatched = experienceKnown && (job.minExperience == null || profile.relevantExperience >= job.minExperience) && (job.maxExperience == null || profile.relevantExperience <= job.maxExperience);
+  const candidateExperienceKnown = profile.relevantExperience > 0 || profile.totalExperience > 0 || !!verifiedFacts?.some(f => f.key === "profile.relevantExperience" && f.classification === "VERIFIED" && f.value !== null && Number(f.value) === profile.relevantExperience);
+  if (preferences.mandatoryExperience && (!experienceKnown || !candidateExperienceKnown || !experienceMatched)) excludedReasons.push(!experienceKnown || !candidateExperienceKnown ? "Mandatory experience cannot be verified" : "Outside mandatory experience range");
+  if (preferences.mandatorySkills && (!job.requirements.length || missingSkills.length)) excludedReasons.push(job.requirements.length ? "Required skills are not confirmed in the selected resume" : "Mandatory skills cannot be verified");
+  const qualificationText = `${profile.education}\n${profile.certifications}`;
+  const missingQualifications = (job.qualifications ?? []).filter(value => !resumeContainsSkill(qualificationText, value) || (activeResumeText !== undefined && !resumeContainsSkill(activeResumeText, value)));
+  if (preferences.mandatoryQualifications && (!job.qualifications?.length || missingQualifications.length)) excludedReasons.push(job.qualifications?.length ? "Required qualifications need confirmation" : "Mandatory qualifications cannot be verified");
   const skillsPoints = job.requirements.length ? 60 * (matchedSkills.length + relatedSkills.length * 0.25) / job.requirements.length : Math.min(30, matchedSkills.length * 10);
   const components = { skills: Math.round(skillsPoints), targetRole: roleMatched ? 20 : 0, experience: experienceMatched ? 20 : 0 };
   const careerText=[profile.summary,profile.workHistory,profile.projects,profile.education,profile.certifications,profile.currentRole].join("\n");
   const reviewEvidence=[
+    ...(job.qualifications??[]).map(value=>({category:"qualification",requested:value,evidence:missingQualifications.includes(value)?"This explicit qualification is not supported by both confirmed education/certifications and the selected resume":"Exact phrase in confirmed education/certifications and selected resume; candidate must verify employer equivalence",status:missingQualifications.includes(value)?"needs-input":"review-required"})),
     ...(job.industry?[{category:"industry",requested:job.industry,evidence:resumeContainsSkill(careerText,job.industry)?`Whole-term mention in confirmed career history: ${job.industry}`:preferences.industries.some(x=>normalize(x)===normalize(job.industry))?"Listed as a target industry; prior experience is unverified":"No exact confirmed profile evidence",status:"review-required"}]:[]),
     ...(job.seniority?[{category:"seniority",requested:job.seniority,evidence:resumeContainsSkill(profile.currentRole,job.seniority)?`Mention in confirmed current role: ${job.seniority}`:"Seniority is not established by years of experience alone",status:"review-required"}]:[]),
     ...(job.responsibilities??[]).map(value=>({category:"responsibility",requested:value,evidence:resumeContainsSkill(careerText,value)?`Exact phrase in confirmed career details: ${value}`:"No exact confirmed career-history phrase; assess transferable experience",status:"review-required"})),

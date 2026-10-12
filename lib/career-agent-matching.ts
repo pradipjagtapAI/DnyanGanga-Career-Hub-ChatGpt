@@ -4,9 +4,26 @@ import type { ManualJob, Profile, Preferences } from './career-core';
 type Factor = { name: string; weight: number; points: number; status: 'supported' | 'gap' | 'unknown' | 'not-requested'; evidence: string };
 const norm=(value:string)=>value.trim().toLowerCase();
 const includes=(value:string|null|undefined,choices:string[])=>!!value&&choices.some(choice=>norm(value).includes(norm(choice)));
+export type OpportunityPriority = { level: 'High' | 'Medium' | 'Low'; eligible: boolean; points: number; reasons: string[]; unknowns: string[]; method: string };
+/** Queue urgency is independent of the fixed evidence-fit score. Unknown dates
+ * or salaries never acquire points, and priority cannot revive an excluded job. */
+export function opportunityPriority(job:ManualJob,fit:{eligible:boolean;score:number|null},locationAligned:boolean,salaryAligned:boolean,options:{now?:Date;preferredEmployers?:string[];userInterested?:boolean;deadline?:string|null}={}):OpportunityPriority {
+  const reasons:string[]=[],unknowns:string[]=[];let points=0;
+  const method='Separate queue priority: fit >=70 gives3 points, >=45 gives2, lower assessed fit gives1; posting within7 days gives2 or within30 days gives1; configured location and comparable salary alignment give1 each; explicit preferred employer gives2; a known deadline within7 days and explicit interest give1 each. High>=6, Medium>=3, otherwise Low. Unknown evidence gives0. Mandatory exclusions always remain excluded. This is neither a hiring probability nor a change to the fixed fit score.';
+  if(!fit.eligible)return {level:'Low',eligible:false,points:0,reasons:['Excluded by mandatory preferences; this listing is not an application opportunity.'],unknowns,method};
+  if(fit.score!==null){const value=fit.score>=70?3:fit.score>=45?2:1;points+=value;reasons.push(`Assessed profile fit ${fit.score}/100 contributes ${value} priority points.`);}else unknowns.push('Profile fit is not established.');
+  const now=(options.now??new Date()).getTime(),posted=job.postedAt?Date.parse(job.postedAt):NaN;
+  if(Number.isFinite(posted)&&posted<=now){const days=(now-posted)/86400000;if(days<=30){const value=days<=7?2:1;points+=value;reasons.push(`The provided posting date is within ${days<=7?'7':'30'} days (+${value}).`);}else reasons.push('The provided posting date is older than30 days (+0).');}else unknowns.push('Posting freshness is unknown; source check time is not a posting date.');
+  if(locationAligned){points++;reasons.push('The listing matches a configured city (+1).');}
+  if(salaryAligned){points++;reasons.push('Provided comparable salary overlaps the configured range (+1).');}else if(job.salaryMin==null&&job.salaryMax==null)unknowns.push('Salary alignment cannot be assessed because pay is not provided.');
+  if(options.preferredEmployers?.some(company=>norm(company)===norm(job.company))){points+=2;reasons.push('Company is explicitly preferred (+2).');}
+  if(options.userInterested===true){points++;reasons.push('Explicit candidate interest (+1).');}
+  if(options.deadline){const deadline=Date.parse(options.deadline);if(Number.isFinite(deadline)&&deadline>=now&&deadline-now<=7*86400000){points++;reasons.push('Provided application deadline is within7 days (+1).');}else if(!Number.isFinite(deadline))unknowns.push('Application deadline is not a valid date.');}else unknowns.push('Application deadline is not provided.');
+  return {level:points>=6?'High':points>=3?'Medium':'Low',eligible:true,points,reasons,unknowns,method};
+}
 /** Transparent evidence ranking, never a hiring probability. Mandatory policy remains first. */
 export function rankAgentJob(job:ManualJob,profile:Profile,preferences:Preferences,activeResumeText?:string,verifiedFacts?:{key:string;value:string|null;classification:string}[]) {
-  const base=matchJob(job,profile,preferences,activeResumeText);
+  const base=matchJob(job,profile,preferences,activeResumeText,verifiedFacts);
   const factors:Factor[]=[];
   const add=(name:string,weight:number,status:Factor['status'],points:number,evidence:string)=>factors.push({name,weight,status,points:Math.max(0,Math.min(weight,Math.round(points*100)/100)),evidence});
   const role=base.relevance.components.targetRole>0;
@@ -35,8 +52,9 @@ export function rankAgentJob(job:ManualJob,profile:Profile,preferences:Preferenc
   const score=Math.round(factors.reduce((sum,factor)=>sum+factor.points,0));
   const coverage=factors.filter(f=>f.status==='supported'||f.status==='gap').reduce((sum,f)=>sum+f.weight,0);
   const whyMatches=factors.filter(f=>f.status==='supported').map(f=>`${f.name}: ${f.evidence}`);
-  const possibleGaps=[...base.missingSkills.map(skill=>`Requirement not confirmed: ${skill}`),...factors.filter(f=>f.status==='gap').map(f=>`${f.name}: ${f.evidence}`)];
+  const possibleGaps=[...base.missingSkills.map(skill=>`Requirement not confirmed: ${skill}`),...base.reviewEvidence.filter(e=>e.category==='qualification'&&e.status==='needs-input').map(e=>`Qualification requires confirmation: ${e.requested}. ${e.evidence}`),...factors.filter(f=>f.status==='gap').map(f=>`${f.name}: ${f.evidence}`)];
   const unknownInformation=[...base.relevance.uncertainty,...factors.filter(f=>f.status==='unknown').map(f=>`${f.name}: ${f.evidence}`)];
   const method='Mandatory filters are applied first. Fixed weights: role 15, skills 25, relevant experience 15, seniority 5, industry 5, location 10, compensation 10, work arrangement 5, career goals 10 (100 total). Unknown or unrequested factors receive no points and are shown separately; coverage reports the assessed weight. Exact confirmed terms support claims; related skills remain gaps. Same-currency annual/monthly salary conversion uses 12 months, without exchange-rate assumptions. This is an estimate of profile fit, not a hiring probability or universal ATS score.';
-  return {...base,whyMatches,possibleGaps,unknownInformation,factors,coverage,relevance:{...base.relevance,score:base.relevance.eligible?score:null,label:!base.relevance.eligible?'Excluded by preferences':score>=70&&coverage>=70?'Strong relevance':score>=45?'Worth reviewing':'Limited relevance',components:Object.fromEntries(factors.map(f=>[f.name,f.points])),method,uncertainty:[...new Set(unknownInformation)]}};
+  const priority=opportunityPriority(job,{eligible:base.relevance.eligible,score:base.relevance.eligible?score:null},location,salary.status==='overlap');
+  return {...base,whyMatches,possibleGaps,unknownInformation,factors,coverage,opportunityPriority:priority,relevance:{...base.relevance,score:base.relevance.eligible?score:null,label:!base.relevance.eligible?'Excluded by preferences':score>=70&&coverage>=70?'Strong relevance':score>=45?'Worth reviewing':'Limited relevance',components:Object.fromEntries(factors.map(f=>[f.name,f.points])),method,uncertainty:[...new Set(unknownInformation)]}};
 }

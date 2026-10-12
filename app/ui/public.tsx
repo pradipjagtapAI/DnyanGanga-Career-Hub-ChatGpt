@@ -65,6 +65,7 @@ export function Footer() {
       <Brand />
       <p>Your AI-Powered Career Growth Platform</p>
       <nav>
+        <a href="/about">About</a>
         <a href="/contact">Contact</a>
         <a href="/privacy">Privacy</a>
         <a href="/terms">Terms</a>
@@ -373,6 +374,8 @@ export const publicPages: Record<
     sections: { title: string; text: string }[];
   }
 > = {
+  login: {label:"YOUR PRIVATE WORKSPACE",title:"Welcome back.",intro:"Continue through the hosting identity provider to open your existing career workspace.",sections:[{title:"Sign in with ChatGPT",text:"Accounts and sessions are managed by Sites. This website does not collect a separate password. Use the identity provider for sign-in recovery and its account security controls."}]},
+  "sign-up": {label:"GET STARTED",title:"Your next career chapter starts here.",intro:"Create your private workspace through the existing hosting identity provider, then confirm your profile and save your first resume.",sections:[{title:"An account you control",text:"Your profile, resumes and conversations stay private. The demonstration is separate from account records, and provider connections show their actual setup status."}]},
   features: {
     label: "THE PLATFORM",
     title: "A workspace that follows your ambition.",
@@ -381,7 +384,7 @@ export const publicPages: Record<
     sections: [
       {
         title: "AI Agent Command Center",
-        text: "Coordinate saved searches, matching, document drafts and application reviews through a central career orchestrator and 17 specialist agents. Choose Assist, Approval or Agentic mode, inspect real activity, and pause all agents or individual workflows. Approval is the default. Unsupported application sites remain a manual handoff.",
+        text: "Coordinate saved searches, matching, document drafts and application reviews through a central career orchestrator and 21 specialist agents. Choose Assist, Approval or Agentic mode, inspect real activity, and pause all agents or individual workflows. Approval is the default. Unsupported application sites remain a manual handoff.",
       },
       {
         title: "Profile & career goals",
@@ -405,6 +408,48 @@ export const publicPages: Record<
       },
     ],
   },
+  "ai-career-agents": {
+    label: "AI CAREER AGENTS", title: "A coordinated search. Decisions you can inspect.",
+    intro: "A central orchestrator plans and verifies the work of 21 specialists. Their status comes from recorded tasks, rather than simulated activity.",
+    sections: [
+      {title:"Start with your rules",text:"Separate searches can use different confirmed resume versions and target roles. Mandatory locations and work arrangements always apply before ranking. Approval mode is the default."},
+      {title:"Review before a consequential action",text:"Application packages show the destination, documents, screening answers and personal information. Missing facts require your input. Material changes invalidate prior approval. Automatic submission remains unavailable without an officially supported connection."},
+      {title:"Stop the workflow immediately",text:"Pause all agents or separately stop discovery, document generation, notifications, applications and employer communications. Permissions are rechecked on the server before external work."},
+    ],
+  },
+  "resume-tools": {
+    label:"RESUME STUDIO",title:"Keep your master. Prepare the right version.",intro:"Edit your story using facts you have confirmed, then compare a separate role-specific version with the original.",
+    sections:[
+      {title:"Versions with context",text:"Save a name, target role, linked job, date and parent version. Choose your default resume explicitly. Archive older versions while preserving private application history."},
+      {title:"Review factual claims",text:"Local consistency checks highlight dates, numerical claims and repeated entries for review. Indicators are limited checks, not proof of an error. AI proposals stay separate from confirmed candidate information."},
+      {title:"Readable documents",text:"Choose a simple template, section order and visibility. Export PDF, DOCX or plain text. PDF templates currently support Latin scripts; DOCX and text retain other scripts. Uploaded original files require the separate private scanning and extraction connection."},
+    ],
+  },
+  "job-discovery": {
+    label:"JOB DISCOVERY",title:"Search with evidence and clear boundaries.",intro:"Use authorized employer feeds or import a job description you are permitted to use. Connections show their actual setup status.",
+    sections:[
+      {title:"Independent campaigns",text:"Choose a role, locations, resume, experience range and daily, weekly or manual frequency for each saved search. Pause or archive a campaign without deleting its history."},
+      {title:"Understand profile fit",text:"Review why a role matches, possible gaps and unknown information. The nine-factor estimate describes supported profile fit. Opportunity priority separately explains limited urgency and source freshness; neither predicts hiring."},
+      {title:"Respect the original source",text:"Keep the employer link, source and retrieval time. Exact destinations are deduplicated and closed listings excluded. LinkedIn, Indeed and Naukri require confirmed permitted access; this build does not scrape or bypass their restrictions."},
+    ],
+  },
+  "interview-preparation": {
+    label:"INTERVIEW PREPARATION",title:"Practice with the role in front of you.",intro:"Bring a saved job and your confirmed resume into private interview preparation.",
+    sections:[
+      {title:"Questions with context",text:"Practice technical, behavioural, managerial and HR questions. Review your saved text answers and feedback. Self-review checklists are clearly distinguished from configured external AI."},
+      {title:"A personal interview calendar",text:"Record the company, role, time zone, meeting link and resume used. These are candidate-entered records. External email and calendar access are not connected."},
+      {title:"You control recording",text:"Voice recording and live interview assistance remain unavailable pending their permission, retention and provider setup. Practice does not infer personality, honesty or employability."},
+    ],
+  },
+  "career-coaching": {
+    label:"CAREER COACH",title:"Turn a career direction into practical actions.",intro:"Connect goals, actual job requirements and learning tasks in a private workspace.",
+    sections:[
+      {title:"A plan grounded in your profile",text:"Compare directions using confirmed experience and skills. Keep AI-extracted, inferred and unknown information visible in the Candidate Knowledge Vault until you confirm it."},
+      {title:"Learn from real requirements",text:"Review missing skills across your saved listings and turn a gap into a task with a date, resource and supporting jobs. Completing a task does not automatically claim you gained a qualification."},
+      {title:"Follow up thoughtfully",text:"Keep recruiter contacts, interaction notes and next actions. Prepare an unsent draft using known facts. No employer message is sent without supported access and the required authorization."},
+    ],
+  },
+  about: {label:"ABOUT DNYANGANGA",title:"Your career, with more direction.",intro:"DnyanGanga Career Hub brings your profile, documents, searches and next actions into one workspace.",sections:[{title:"A practical career workspace",text:"Designed for students, early-career professionals, experienced specialists, career changers and senior professionals. The public demonstration uses labelled fictional examples; private accounts calculate counts from their own records."},{title:"Transparent by design",text:"The current private review build shows what works, which services are configured, and what needs external access. It makes no claims of hiring outcomes, security certification or customer totals."}]},
   "how-it-works": {
     label: "HOW IT WORKS",
     title: "Turn your ambition into a workable plan.",
@@ -589,8 +634,9 @@ export function PublicPage({ slug }: { slug: string }) {
             </section>
           ))}
         </div>
-        <a href="/demo" className="btn primary">
-          Explore the workspace <ArrowRight size={17} />
+        {slug==="features"&&<nav className="content-sections" aria-label="Explore career tools">{[["ai-career-agents","AI career agents"],["resume-tools","Resume tools"],["job-discovery","Job discovery"],["interview-preparation","Interview preparation"],["career-coaching","Career coaching"]].map(([path,label])=><a className="text-link" key={path} href={"/"+path}>{label}<ArrowUpRight size={16}/></a>)}</nav>}
+        <a href={slug==="login"||slug==="sign-up"?"/signin-with-chatgpt?return_to=%2Fdashboard":"/demo"} target={slug==="login"||slug==="sign-up"?"_top":undefined} className="btn primary">
+          {slug==="login"||slug==="sign-up"?"Continue with ChatGPT":"Explore the workspace"} <ArrowRight size={17} />
         </a>
       </main>
       <Footer />

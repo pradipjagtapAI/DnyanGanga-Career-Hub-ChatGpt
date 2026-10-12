@@ -1,0 +1,27 @@
+{
+  "passed": true,
+  "executedAt": "2026-10-12T16:00:27.387Z",
+  "checks": 7,
+  "checkDescriptions": [
+    "Owned selected resume review produces an actual reversed/future-date indicator with its limited-evidence explanation",
+    "Section hiding/reordering and template choice require explicit review, create a separate version, and preserve the original text and active selection",
+    "Original-versus-selected comparison displays actual removed education content",
+    "Saved selected version produces actual PDF and DOCX browser downloads with valid container signatures",
+    "Owned separate resume version archives and restores through the real interface",
+    "Resume review, comparison and template panels fit desktop 1440 and mobile 390 pixels with screenshots",
+    "No browser page errors during the exercised resume studio flow"
+  ],
+  "pageErrors": [],
+  "cleanupErrors": [],
+  "failure": null,
+  "scope": "Fixed synthetic loopback identity with actual local D1, owned saved documents, real PDF/DOCX exports; no uploaded scanner, live AI or production identity test.",
+  "cleanup": "Created source and formatted resume versions removed; original active selection/profile/preferences preserved. Private immutable synthetic history may remain locally.",
+  "screenshots": [
+    "outputs/resume-toolkit-desktop.png",
+    "outputs/resume-toolkit-mobile.png"
+  ],
+  "exports": [
+    "outputs/resume-toolkit-synthetic.pdf",
+    "outputs/resume-toolkit-synthetic.docx"
+  ]
+}

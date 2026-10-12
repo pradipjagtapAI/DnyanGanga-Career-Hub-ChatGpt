@@ -14,7 +14,7 @@ page.on('pageerror', error => errors.push(error.message));
 const nonce = Date.now().toString(36);
 const marker = 'Synthetic Agent Browser QA ' + nonce;
 const factKey = 'qa_agent_fact_' + nonce;
-const answerKey = 'job_specific_screening';
+let answerKey;
 let initial; let initialExport; let jobId; let resumeId; let createdSearchId; let packageId;
 let testFailure;
 async function call(resource, method = 'GET', body) {
@@ -42,17 +42,17 @@ try {
   await page.goto(base.origin + '/signin-with-chatgpt?return_to=%2Fdashboard%3Fview%3Dagents', { waitUntil: 'networkidle' });
   initial = await call('state');
   assert.equal(initial.profile.email, 'seedy@sites.test', 'Refusing to mutate a real identity.');
-  initialExport = await call('export'); assert.equal(initial.agentic.agents.length, 18);
+  initialExport = await call('export'); await mkdir('.sites-runtime',{recursive:true}); await writeFile('.sites-runtime/agent-restore-'+nonce+'.json',JSON.stringify(initialExport)); assert.equal(initial.agentic.agents.length, 22);
   assert.equal(initial.agentic.settings.mode, 'approval', 'This test begins with the actual default approval mode.');
   await call('profile', 'PUT', { profile: { ...initial.profile, fullName: marker, headline: marker + ' Role', currentRole: marker + ' Role', currentCity: 'Pune', skills: ['Python'], summary: 'Confirmed fictional experience for local browser testing.', workHistory: 'Reviewed synthetic Python examples.', totalExperience: 3, relevantExperience: 3 }, preferences: { ...initial.preferences, targetRoles: [marker + ' Role'], preferredCities: ['Pune'], workArrangements: ['Hybrid'], employmentTypes: [], mandatoryLocation: true, mandatoryWorkArrangement: true, mandatoryEmploymentType: false }, expectedRevision: initial.revision });
   const resume = await call('resumes', 'POST', { title: marker + ' Resume', targetRole: marker + ' Role', text: 'SYNTHETIC TEST ONLY\nSUMMARY\nConfirmed fictional experience for local browser testing.\nSKILLS\nPython', source: 'manual' });
   resumeId = resume.id; await call('resumes/' + resumeId + '/active', 'POST', {});
   const job = await call('jobs', 'POST', { title: marker + ' Role', company: marker + ' Employer', location: 'Pune', workArrangement: 'Hybrid', employmentType: null, minExperience: 2, maxExperience: 5, requirements: ['Python'], description: 'Synthetic authorized local fixture. Python skills requested. No live vacancy or external submission.', url: 'https://example.test/synthetic-agent-' + nonce });
-  jobId = job.id;
+  jobId = job.id; answerKey = "job_screening." + jobId;
   await openAgents();
-  assert.equal(await page.locator('.acc-agent-card').count(), 17);
+  assert.equal(await page.locator('.acc-agent-card').count(), 21);
   assert.match(await page.locator('.acc-orchestrator').innerText(), /orchestrator/i);
-  checks.push('Actual registry contains 17 specialists plus one orchestrator; default approval mode, no simulated activity');
+  checks.push('Actual registry contains 21 specialists plus one orchestrator; default approval mode, no simulated activity');
 
   await section('Saved searches');
   await page.getByRole('button', { name: 'New saved search', exact: true }).click();
@@ -112,7 +112,7 @@ try {
   packageId = prepared.body.package.id;
   let pack = prepared.body.package;
   assert.equal(pack.jobId, jobId);
-  assert.ok(pack.unknowns.some(item => item.required && item.key === 'answer.job_specific_screening'));
+  assert.ok(pack.unknowns.some(item => item.required && item.key === 'answer.' + answerKey));
   const card = packageCard();
   await card.waitFor();
   assert.match(await card.innerText(), /Needs your input before approval/);
@@ -123,7 +123,7 @@ try {
   checks.push('Direct package uses exact owned job and active resume; required unknown screening question is visible and approval blocked');
 
   await card.locator('details').filter({ has: page.locator('summary').filter({ hasText: /^Screening answers$/ }) }).locator('summary').click();
-  const requiredAnswerForm = card.locator('form').filter({ has: page.getByRole('heading', { name: /Which screening questions does this employer actually require/ }) });
+  const requiredAnswerForm = card.locator('form').filter({ has: page.getByRole('heading', { name: /Which screening questions does/ }) });
   await requiredAnswerForm.getByLabel('Your answer', { exact: true }).fill('SYNTHETIC EMPLOYER FIXTURE ONLY: the fictional employer asks whether all examples are test data. Answer: yes; no real application or screening answers are being sent.');
   await requiredAnswerForm.getByLabel('I confirm this answer is accurate and may be reused in reviewed packages.', { exact: true }).check();
   await clickAndWait(requiredAnswerForm.getByRole('button', { name: 'Save confirmed answer', exact: true }), 'agents/answers', 'POST');
@@ -164,14 +164,16 @@ try {
   await section('Review pending actions');
   await clickAndWait(packageCard().getByRole('button', { name: 'Refresh package snapshot', exact: true }), 'agents/packages/' + packageId, 'PATCH');
   state = await call('state'); pack = state.agentic.packages.find(item => item.id === packageId);
-  assert.equal(pack.unknowns.filter(item => item.required).length, 0);
+  assert.ok(pack.unknowns.some(item => item.required), "Missing selected screening answers stay unknown until explicitly included.");
   const coverDetails = packageCard().locator('details').filter({ has: page.locator('summary').filter({ hasText: /^Exact cover letter$/ }) });
   await coverDetails.locator('summary').click();
   await coverDetails.getByRole('button', { name: 'Edit cover letter and disclosure', exact: true }).click();
   await packageCard().getByLabel('Cover letter text', { exact: true }).fill('SYNTHETIC TEST ONLY. This draft uses the reviewed fictional Python skills in the selected local resume. No employers, results or qualifications are invented.');
+  await packageCard().getByLabel(/^Include answer: Which screening questions does/).check();
   await packageCard().getByLabel('I checked this draft and the information included in it.', { exact: true }).check();
   await clickAndWait(packageCard().getByRole('button', { name: 'Save package changes', exact: true }), 'agents/packages/' + packageId, 'PATCH');
   state = await call('state'); pack = state.agentic.packages.find(item => item.id === packageId);
+  assert.equal(pack.unknowns.filter(item => item.required).length, 0);
   assert.match(pack.snapshot.coverLetter.text, /^SYNTHETIC TEST ONLY/);
   assert.ok(pack.snapshot.coverLetter.version);
   await packageCard().getByLabel('I reviewed this exact job, document versions, answers and personal information. I understand approval alone does not submit anything.', { exact: true }).check();
@@ -205,7 +207,7 @@ try {
   checks.push('Changing a confirmed fact invalidates server approval; stale package cannot approve and refresh resets the explicit review checkbox');
 
   await section('Activity history');
-  assert.ok((await call('state')).agentic.activity.length > initial.agentic.activity.length);
+  assert.ok((await call('state')).agentic.activity.some(item => !initial.agentic.activity.some(prior => prior.id === item.id)), 'A new event exists within the bounded activity window.');
   assert.match(await page.locator('.acc').innerText(), /Synthetic|workflow|confirmed|review/i);
   checks.push('Activity history displays actual persisted workflow and review events');
   await mkdir('outputs', { recursive: true });
@@ -236,6 +238,7 @@ try {
     await clean('Original active resume', async () => { if (initial.activeResumeId) await call('resumes/' + initial.activeResumeId + '/active', 'POST', {}); });
     await clean('Created resume versions', async () => { const current = await call('state'); for (const resume of current.resumes.filter(item => !initial.resumes.some(prior => prior.id === item.id))) await call('resumes/' + resume.id, 'DELETE', {confirmActive:true}); });
     await clean('Original vault and reusable answers (owned local D1 only)', async () => {
+      await page.goto(base.origin + '/privacy', {waitUntil:'networkidle'});
       const config = JSON.parse(await readFile('dist/server/wrangler.json', 'utf8'));
       assert.equal(config.d1_databases.find(item => item.binding === 'DB').database_id, '00000000-0000-4000-8000-000000000000');
       const original = initialExport.agentic;
@@ -254,10 +257,11 @@ try {
       }
       const sqlFile = path.resolve('.sites-runtime/agent-test-cleanup-' + nonce + '.sql');
       await mkdir(path.dirname(sqlFile), {recursive:true}); await writeFile(sqlFile, statements.join('\n'));
-      try { execFileSync(process.execPath, ['--import','./scripts/sites-env.mjs','./node_modules/wrangler/bin/wrangler.js','d1','execute','DB','--local','--config','dist/server/wrangler.json','--persist-to','.wrangler/state','--file',sqlFile], {cwd:process.cwd(),encoding:'utf8',timeout:60000,stdio:'pipe'}); } finally { await unlink(sqlFile).catch(() => {}); }
+      try { for(let attempt=0;attempt<3;attempt++){try{execFileSync(process.execPath, ['--import','./scripts/sites-env.mjs','./node_modules/wrangler/bin/wrangler.js','d1','execute','DB','--local','--config','dist/server/wrangler.json','--persist-to','.wrangler/state','--file',sqlFile], {cwd:process.cwd(),encoding:'utf8',timeout:60000,stdio:'pipe'});break;}catch(error){if(attempt===2||!String(error.stderr).includes('SQLITE_BUSY'))throw error;await new Promise(resolve=>setTimeout(resolve,1000));}} } finally { await unlink(sqlFile).catch(() => {}); }
     });
     await clean('Restoration verification', async () => { const current = await call('state'); assert.deepEqual(current.profile, initial.profile); assert.deepEqual(current.preferences, initial.preferences); assert.equal(current.agentic.settings.mode, initial.agentic.settings.mode); assert.equal(current.agentic.settings.pausedAll, initial.agentic.settings.pausedAll); assert.deepEqual(current.agentic.settings.pausedCategories, initial.agentic.settings.pausedCategories); assert.ok(!current.jobs.some(item => item.id === jobId)); assert.ok(!current.resumes.some(item => item.id === resumeId)); assert.ok(!current.agentic.savedSearches.some(item => item.id === createdSearchId)); assert.ok(!current.agentic.vault.some(item => item.key === factKey)); assert.deepEqual(current.agentic.confirmedAnswers.map(({key,question,value}) => ({key,question,value})), initial.agentic.confirmedAnswers.map(({key,question,value}) => ({key,question,value}))); });
   }
+  if(!cleanupErrors.length)await unlink('.sites-runtime/agent-restore-'+nonce+'.json').catch(()=>{});
   await mkdir('docs', { recursive:true });
   const result = {passed:!testFailure && !cleanupErrors.length,executedAt:new Date().toISOString(),checks:checks.length,checkDescriptions:checks,pageErrors:errors,cleanupErrors,failure:testFailure?.message || null,scope:'Fixed synthetic loopback identity, actual local D1 and browser; no live AI, employer submission, messaging or production identity tests.',cleanup:'Original profile, preferences, settings, active resume, vault, answers and feedback restored; created searches/jobs/resumes/AI sessions removed. Labelled synthetic agent run/activity/package history may remain locally.',screenshots:['outputs/agent-command-center-desktop.png','outputs/agent-command-center-mobile.png']};
   await writeFile('docs/agent-browser-results.json', JSON.stringify(result, null, 2));

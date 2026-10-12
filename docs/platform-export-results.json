@@ -1,0 +1,27 @@
+{
+  "passed": true,
+  "scope": "Synthetic fixtures, pypdf text extraction, fitz page bounds/rendering, OOXML parsing; not every employer ATS or Office renderer",
+  "templates": [
+    {
+      "template": "classic",
+      "pdfPages": 1,
+      "pdfTextPreserved": true,
+      "docxUnicodeAndLiteralTextPreserved": true,
+      "embeddedMacrosOrExternalRelations": false
+    },
+    {
+      "template": "modern",
+      "pdfPages": 1,
+      "pdfTextPreserved": true,
+      "docxUnicodeAndLiteralTextPreserved": true,
+      "embeddedMacrosOrExternalRelations": false
+    },
+    {
+      "template": "compact",
+      "pdfPages": 1,
+      "pdfTextPreserved": true,
+      "docxUnicodeAndLiteralTextPreserved": true,
+      "embeddedMacrosOrExternalRelations": false
+    }
+  ]
+}

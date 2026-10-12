@@ -19,12 +19,14 @@ const storeURL = await moduleURL("../lib/career-agent-store.ts", { "./career-cor
 const providerURL = await moduleURL("../lib/career-providers.ts", { "./career-core": core });
 const aiURL = await moduleURL("../lib/career-ai.ts", { "./career-core": core });
 const matchingURL = await moduleURL("../lib/career-agent-matching.ts", { "./career-core": core });
-const orchestrator = await import(await moduleURL("../lib/career-orchestrator.ts", { "./career-core": core, "./career-store": careerURL, "./career-agent-store": storeURL, "./career-agent-contract": contractURL, "./career-providers": providerURL, "./career-ai": aiURL, "./career-agent-matching": matchingURL }));
+const intelligenceURL = await moduleURL("../lib/career-intelligence.ts");
+const intelligence = await import(intelligenceURL);
+const orchestrator = await import(await moduleURL("../lib/career-orchestrator.ts", { "./career-core": core, "./career-store": careerURL, "./career-agent-store": storeURL, "./career-agent-contract": contractURL, "./career-providers": providerURL, "./career-ai": aiURL, "./career-agent-matching": matchingURL, "./career-intelligence": intelligenceURL }));
 const alerts = await import(await moduleURL("../lib/career-alerts.ts", { "./career-core": core, "./career-providers": providerURL, "./career-store": careerURL, "./career-agent-store": storeURL, "./career-agent-matching": matchingURL, "resend": import.meta.resolve("resend") }));
 
 const { CareerStore } = await import(careerURL);
 const { CareerAgentStore } = await import(storeURL);
-const { SPECIALIST_AGENTS, snapshotHash } = await import(contractURL);
+const { SPECIALIST_AGENTS, jobScreeningKey, snapshotHash } = await import(contractURL);
 const migrations = await Promise.all((await readdir(new URL("../drizzle/", import.meta.url))).filter(f => f.endsWith(".sql")).sort().map(f => readFile(new URL(`../drizzle/${f}`, import.meta.url), "utf8")));
 class D1 {
   db = new DatabaseSync(":memory:"); failSQL = null;
@@ -40,7 +42,7 @@ const code = expected => error => error instanceof CareerError && error.code ===
 const boards = ["first_fixture", "second_fixture"].map(board => ({ board, company: "Authorized test employer", rightsConfigId: "offline-test-permission", displayAllowed: true, digestAllowed: true, aiAllowed: false }));
 const providerEnv = { CAREER_JOBS_ENABLED: "true", GREENHOUSE_BOARDS_JSON: JSON.stringify(boards), CAREER_SCHEDULER_SECRET: "test-scheduler-secret-longer-than-32-chars" };
 const emailEnv = { ...providerEnv, CAREER_ALERTS_ENABLED: "true", CAREER_PUBLIC_ORIGIN: "https://career.example.test", CAREER_ALERT_RELAY_ORIGIN: "https://scheduler.example.test", CAREER_VERIFICATION_SECRET: "test-verification-secret-at-least-32-chars", RESEND_API_KEY: "re_test_offline_fixture", RESEND_SENDER_VERIFIED: "true", RESEND_FROM: "Career <alerts@example.test>", RESEND_WEBHOOK_SECRET: "whsec_offlinefixture" };
-const aiEnv = { AI_ENABLED: "true", AI_PROVIDER: "openai", OPENAI_API_KEY: "mock-server-token-never-a-real-key", AI_MODEL: "test-model", AI_ALLOWED_MODELS: "test-model", AI_DATA_POLICY_APPROVED: "true", AI_MAX_OUTPUT_TOKENS: "1500", AI_DAILY_REQUEST_LIMIT: "20", AI_DAILY_TOKEN_LIMIT: "1000000", AI_GLOBAL_DAILY_TOKEN_LIMIT: "10000000" };
+const aiEnv = { AI_ENABLED: "true", AI_PROVIDER: "openai", OPENAI_API_KEY: "mock-server-token-never-a-real-key", AI_MODEL: "test-model", AI_ALLOWED_MODELS: "test-model", AI_TASK_ROUTES_JSON: JSON.stringify(Object.fromEntries(["resume_tailoring", "cover_letter", "interview_preparation", "career_coach"].map(id => [id, { provider: "openai", model: "test-model" }]))), AI_DATA_POLICY_APPROVED: "true", AI_MAX_OUTPUT_TOKENS: "1500", AI_DAILY_REQUEST_LIMIT: "20", AI_DAILY_TOKEN_LIMIT: "1000000", AI_GLOBAL_DAILY_TOKEN_LIMIT: "10000000" };
 function rawJob(id = 101) { return { id, internal_job_id: id + 1000, title: "Software Engineer", location: { name: "Pune" }, absolute_url: `https://careers.example.test/jobs/${id}`, content: "<p>Python engineering responsibilities.</p>", updated_at: now.toISOString() }; }
 const feedResponse = () => new Response(JSON.stringify({ jobs: [rawJob()], meta: { total: 1 } }), { headers: { "content-type": "application/json" } });
 async function workspace({ mode = "approval", missing = false, jobCount = 1 } = {}) {
@@ -60,11 +62,11 @@ async function workspace({ mode = "approval", missing = false, jobCount = 1 } = 
   }
   return { db, ...stores };
 }
-test("all 17 specialists persist real results while unsupported execution never marks Applied", async () => {
+test("all 21 specialists persist real results while unsupported execution never marks Applied", async () => {
   const { db, alice } = await workspace({ jobCount: 4 }); const before = await alice.career.account();
   const result = await orchestrator.startCareerAgentRun(alice, { idempotencyKey: "browser-nonce" }, {});
   assert.equal(result.runs.length, 1); const tasks = await alice.ownedTasks(result.runs[0].id);
-  assert.equal(tasks.length, 17); assert.deepEqual(new Set(tasks.map(t => t.agentId)), new Set(SPECIALIST_AGENTS.map(a => a.id)));
+  assert.equal(tasks.length, 21); assert.deepEqual(new Set(tasks.map(t => t.agentId)), new Set(SPECIALIST_AGENTS.map(a => a.id)));
   assert.equal(tasks.find(t => t.agentId === "application_execution").status, "unsupported");
   assert.equal(tasks.find(t => t.agentId === "job_discovery").status, "blocked");
   assert.equal(tasks.find(t => t.agentId === "application_preparation").output.packages.length, 3);
@@ -83,13 +85,17 @@ test("a saved search cannot widen mandatory global Pune and keeps independent re
   const matching = (await alice.ownedTasks(result.runs[0].id)).find(t => t.agentId === "job_matching");
   assert.equal(matching.output.results[0].factors.reduce((sum, f) => sum + f.weight, 0), 100);
 });
-test("Assist mode analyzes and suggests without document drafts or application packages", async () => {
+test("Assist mode prepares unreviewed drafts and packages while the candidate performs consequential actions", async () => {
   const { db, alice } = await workspace({ mode: "assist" });
+  const original = (await alice.career.account()).active_resume_id;
   const result = await orchestrator.startCareerAgentRun(alice, {}, {}); const tasks = await alice.ownedTasks(result.runs[0].id);
-  assert.equal(tasks.find(t => t.agentId === "resume_tailoring").status, "blocked");
-  assert.equal(tasks.find(t => t.agentId === "application_preparation").output.packagesCreated, 0);
-  assert.equal(db.db.prepare("SELECT COUNT(*) c FROM career_application_packages").get().c, 0);
-  assert.equal(db.db.prepare("SELECT COUNT(*) c FROM career_ai_sessions WHERE mode IN ('resume','coverletter')").get().c, 0);
+  assert.equal(tasks.find(t => t.agentId === "resume_tailoring").status, "awaiting_approval");
+  assert.equal(tasks.find(t => t.agentId === "application_preparation").output.packages.length, 1);
+  assert.equal(db.db.prepare("SELECT COUNT(*) c FROM career_application_packages").get().c, 1);
+  assert.equal(db.db.prepare("SELECT COUNT(*) c FROM career_ai_sessions WHERE mode IN ('resume','coverletter')").get().c, 2);
+  assert.equal((await alice.career.account()).active_resume_id, original);
+  assert.equal(tasks.find(t => t.agentId === "application_execution").status, "unsupported");
+  assert.equal(db.db.prepare("SELECT COUNT(*) c FROM career_applications WHERE submitted_at IS NOT NULL").get().c, 0);
   assert.equal(tasks.find(t => t.agentId === "job_matching").status, "completed");
 });
 test("unknown profile facts remain UNKNOWN and own-run proposals do not break continuation", async () => {
@@ -200,12 +206,17 @@ test("all twenty saved searches persist independently without silently dropping 
   for (let i = 0; i < 20; i++) searches.push(await alice.saveSearch({ label: `Independent search ${i}`, preferences: (await alice.career.state()).preferences, enabled: true }));
   const result = await orchestrator.startCareerAgentRun(alice, { searchIds: searches.map(s => s.id) }, {}, { maxDurationMs: 1000 });
   assert.equal(result.runs.length, 20); assert.equal(db.db.prepare("SELECT COUNT(DISTINCT search_id) c FROM career_agent_runs WHERE user_id='alice'").get().c, 20);
-  for (const run of result.runs) { assert.equal((await alice.ownedTasks(run.id)).length, 17); assert.equal(run.context.vaultRevision, (await alice.settings()).vaultRevision); }
+  for (const run of result.runs) { assert.equal((await alice.ownedTasks(run.id)).length, 21); assert.equal(run.context.vaultRevision, (await alice.settings()).vaultRevision); }
 });
-test("empty saved-search choices inherit explicit global cities instead of implicit current city", async () => {
+test("empty saved-search choices inherit explicit global cities, countries and industry goals", async () => {
   const { alice } = await workspace(); const state = await alice.career.state(); const prefs = { ...state.preferences, preferredCities: ["Mumbai"] }; const search = { id: "test", preferences: { ...prefs, preferredCities: [] }, revision: 0, enabled: true };
   assert.equal(orchestrator.matchSavedSearch({ ...state.jobs[0], location: "Mumbai" }, state.profile, prefs, search).relevance.eligible, true);
   assert.equal(orchestrator.matchSavedSearch({ ...state.jobs[0], location: "Pune" }, state.profile, prefs, search).relevance.eligible, false);
+  const extended = { ...prefs, preferredCountries: ["India"], mandatoryCountry: true, industries: ["Automotive"] };
+  const inherited = { ...search, preferences: { ...search.preferences, preferredCountries: [], mandatoryCountry: false, industries: [] } };
+  const eligible = orchestrator.matchSavedSearch({ ...state.jobs[0], location: "Mumbai", country: "India", industry: "Automotive" }, state.profile, extended, inherited);
+  assert.equal(eligible.relevance.eligible, true); assert.equal(eligible.factors.find(f => f.name === "career goals").points, 10);
+  assert.equal(orchestrator.matchSavedSearch({ ...state.jobs[0], location: "Mumbai", country: "Canada" }, state.profile, extended, inherited).relevance.eligible, false);
 });
 test("verification stops if pause occurs after the durable before-send manifest", async () => {
   const { alice, db } = await workspace(); const prepare = db.prepare.bind(db); let sends = 0;
@@ -236,7 +247,7 @@ test("owned feedback lowers only that listing's queue priority without changing 
 });
 test("specialist next-run times require an observed enabled scheduler and supported unpaused work", async () => {
   const { db, alice } = await workspace();
-  await alice.saveSettings({ mode: "approval", pausedAll: false, pausedCategories: [], expectedRevision: 0, schedule: { enabled: true, timeZone: "Asia/Kolkata", runTime: "07:30" } });
+  await alice.saveSettings({ mode: "approval", pausedAll: false, pausedCategories: [], expectedRevision: 0, schedule: { enabled: true, timeZone: "Asia/Kolkata", runTime: "06:05" } });
   let state = await orchestrator.getCareerAgentState(alice, providerEnv);
   assert.equal(state.settings.schedule.status, "awaiting_worker"); assert.ok(state.agents.every(agent => agent.nextRunAt === null));
   db.db.prepare("INSERT INTO career_provider_health(provider,status,last_checked_at,error_code) VALUES('agents_scheduler','healthy',?,NULL)").run(new Date().toISOString());
@@ -244,7 +255,99 @@ test("specialist next-run times require an observed enabled scheduler and suppor
   assert.ok(state.settings.schedule.nextRunAt); assert.equal(state.agents.find(agent => agent.id === "profile").nextRunAt, state.settings.schedule.nextRunAt); assert.equal(state.agents.find(agent => agent.id === "job_discovery").nextRunAt, state.settings.schedule.nextRunAt);
   assert.equal(state.agents.find(agent => agent.id === "application_execution").nextRunAt, null); assert.equal(state.agents.find(agent => agent.id === "notification").nextRunAt, null);
   await alice.saveSettings({ mode: "approval", pausedAll: false, pausedCategories: ["documents"], expectedRevision: 1 });
-  state = await orchestrator.getCareerAgentState(alice, providerEnv); assert.ok(state.agents.filter(agent => agent.category === "documents").every(agent => agent.nextRunAt === null)); assert.equal(state.agents.find(agent => agent.id === "profile").nextRunAt, state.settings.schedule.nextRunAt);
+  state = await orchestrator.getCareerAgentState(alice, providerEnv); assert.equal(state.settings.schedule.runTime, "06:05"); assert.equal(state.settings.schedule.enabled, true); assert.ok(state.agents.filter(agent => agent.category === "documents").every(agent => agent.nextRunAt === null)); assert.equal(state.agents.find(agent => agent.id === "profile").nextRunAt, state.settings.schedule.nextRunAt);
   state = await orchestrator.getCareerAgentState(alice, { CAREER_SCHEDULER_SECRET: providerEnv.CAREER_SCHEDULER_SECRET }); assert.equal(state.agents.find(agent => agent.id === "job_discovery").nextRunAt, null);
   await alice.saveSettings({ mode: "approval", pausedAll: true, pausedCategories: [], expectedRevision: 2 }); state = await orchestrator.getCareerAgentState(alice, providerEnv); assert.equal(state.settings.schedule.nextRunAt, null); assert.ok(state.agents.every(agent => agent.nextRunAt === null));
+});
+test("resume fact checking flags inconsistent dates and unsupported numerical claims without corrections", () => {
+  const profile = { ...defaultProfile("qa@example.test", "Fixture"), totalExperience: 3 };
+  const text = "EXPERIENCE\nCompany: Actual candidate employer\n2025 – 2020\n8 years experience\nImproved throughput by 37%.\nImproved throughput by 37%.\nEDUCATION\nBachelor at Example University 2030 – 2034\nCERTIFICATIONS\nExample vendor certificate";
+  const result = intelligence.analyzeResumeFacts(text, profile, [], new Date("2026-10-12T00:00:00Z"));
+  assert.equal(result.changedFacts, false); assert.equal(result.changedDocument, false);
+  for (const category of ["dates", "experience", "achievement", "duplicate", "employer", "education", "certification"]) assert.ok(result.flags.some(f => f.category === category));
+  assert.ok(result.flags.every(f => f.confidence === "review-indicator" && f.evidenceBasis));
+  const verified = intelligence.analyzeResumeFacts("Improved throughput by 37%.", profile, [{ key: "actual_claim", value: "Improved throughput by 37%.", classification: "VERIFIED" }]);
+  assert.equal(verified.flags.filter(f => f.category === "achievement").length, 0);
+  const extracted = intelligence.analyzeResumeFacts("Improved throughput by 37%.", profile, [{ key: "actual_claim", value: "Improved throughput by 37%.", classification: "AI_EXTRACTED" }]);
+  assert.equal(extracted.flags.filter(f => f.category === "achievement").length, 1);
+  const multiline = intelligence.analyzeResumeFacts("Improved throughput by 37%.", profile, [{ key: "profile.workHistory", value: "Actual employer\nImproved throughput by 37%.", classification: "VERIFIED" }]);
+  assert.equal(multiline.flags.filter(f => f.category === "achievement").length, 0);
+  const fresher = { ...profile, totalExperience: 0 };
+  assert.equal(intelligence.analyzeResumeFacts("8 years experience", fresher, []).flags.some(f => f.category === "experience"), false);
+  assert.equal(intelligence.analyzeResumeFacts("8 years experience", fresher, [{ key: "profile.totalExperience", value: "0", classification: "VERIFIED" }]).flags.some(f => f.category === "experience"), true);
+});
+test("learning counts distinct eligible explicit requirements and never promotes a skill", async () => {
+  const { db, alice } = await workspace({ jobCount: 2 });
+  for (const id of ["alice-job-0", "alice-job-1"]) { const row = db.db.prepare("SELECT data FROM career_jobs WHERE id=?").get(id); const job = JSON.parse(row.data); job.requirements = ["Python", "Teamcenter", "Teamcenter"]; db.db.prepare("UPDATE career_jobs SET data=? WHERE id=?").run(JSON.stringify(job), id); }
+  const result = await orchestrator.startCareerAgentRun(alice, {}, {}); const tasks = await alice.ownedTasks(result.runs[0].id), learning = tasks.find(t => t.agentId === "learning").output;
+  assert.equal(learning.sampleSize, 2); assert.equal(learning.requirements.find(r => r.skill === "Teamcenter").occurrences, 2);
+  assert.equal((await alice.confirmedProfile()).skills.includes("Teamcenter"), false); assert.equal(learning.completedTasks, 0);
+  const described = intelligence.buildLearningPlan([{ job: { ...(await alice.career.state()).jobs[0], requirements: [] }, missingSkills: ["Unstructured keyword"] }]); assert.equal(described.requirements.length, 0);
+});
+test("networking uses only owned saved contacts and due recruiter follow-ups remain unsent", async () => {
+  const { db, alice } = await workspace();
+  const insert = db.db.prepare("INSERT INTO career_recruiters(id,user_id,name,company,email,phone,profile_url,job_ids,next_follow_up_at,notes,draft,status,created_at,updated_at) VALUES(?,?,?,?,?,'','', '[]',?,'','','active',?,?)");
+  insert.run("a-contact", "alice", "Saved recruiter", "Actual saved company", "saved@example.test", new Date(Date.now() - 1000).toISOString(), now.toISOString(), now.toISOString());
+  insert.run("b-contact", "bob", "Other user's recruiter", "Private other company", "private@example.test", now.toISOString(), now.toISOString(), now.toISOString());
+  const result = await orchestrator.startCareerAgentRun(alice, {}, {}); const tasks = await alice.ownedTasks(result.runs[0].id), network = tasks.find(t => t.agentId === "networking").output;
+  assert.equal(network.contactsReviewed, 1); assert.equal(network.drafts[0].recipient, "saved@example.test"); assert.equal(network.sent, 0); assert.equal(network.sendingSupported, false);
+  assert.ok(!JSON.stringify(tasks).includes("private@example.test")); assert.equal(tasks.find(t => t.agentId === "follow_up").output.drafts.find(d => d.contactId).status, "draft_unsent");
+});
+test("cost control reports owned recorded quotas and leaves uninvoiced money unknown", async () => {
+  const { db, alice } = await workspace(); const day = now.toISOString().slice(0, 10);
+  db.db.prepare("INSERT INTO career_ai_usage(id,user_id,day,reserved_tokens,actual_tokens,status,expires_at,created_at) VALUES('owned','alice',?,1000,50,'success',?,?)").run(day, now.toISOString(), now.toISOString());
+  db.db.prepare("INSERT INTO career_ai_usage(id,user_id,day,reserved_tokens,actual_tokens,status,expires_at,created_at) VALUES('other','bob',?,999999,900000,'success',?,?)").run(day, now.toISOString(), now.toISOString());
+  const result = await orchestrator.startCareerAgentRun(alice, {}, {}); const cost = (await alice.ownedTasks(result.runs[0].id)).find(t => t.agentId === "cost_control").output;
+  assert.equal(cost.ai.day.reservations, 1); assert.equal(cost.ai.day.knownActualTokens, 50); assert.equal(cost.ai.monetaryCost, null); assert.ok(cost.unmeasured.includes("Per-plan monetary limits"));
+});
+test("model router requires per-task approved policy and cannot bypass global allowlist or invent adapters", async () => {
+  assert.equal(intelligence.resolveAgentModel("resume_tailoring", { ...aiEnv, AI_TASK_ROUTES_JSON: undefined }).status, "not-connected");
+  assert.equal(intelligence.resolveAgentModel("resume_tailoring", { ...aiEnv, AI_TASK_ROUTES_JSON: JSON.stringify({ resume_tailoring: { provider: "openai", model: "unauthorized" } }) }).status, "not-connected");
+  assert.equal(intelligence.resolveAgentModel("resume_tailoring", { ...aiEnv, AI_TASK_ROUTES_JSON: JSON.stringify({ resume_tailoring: { provider: "invented-provider", model: "test-model" } }) }).status, "not-connected");
+  const { alice } = await workspace(); let calls = 0;
+  const result = await orchestrator.startCareerAgentRun(alice, {}, { ...aiEnv, AI_TASK_ROUTES_JSON: undefined }, { aiProvider: { generate: async () => { calls++; throw Error("must not call"); } } });
+  assert.equal(calls, 0); assert.equal(result.execution[0].budget.externalCalls, 0);
+  const draft = (await alice.ownedTasks(result.runs[0].id)).find(t => t.agentId === "resume_tailoring").output.drafts[0]; assert.equal(draft.source, "self-review");
+});
+test("configured schedules handle non-default times, midnight catch-up and daylight saving", () => {
+  assert.equal(orchestrator.agentScheduleDue(new Date("2026-10-12T00:30:00Z"), "Asia/Kolkata", "06:00").due, true);
+  assert.equal(orchestrator.agentScheduleDue(new Date("2026-10-12T02:00:00Z"), "Asia/Kolkata", "06:00").due, false);
+  const midnight = orchestrator.agentScheduleDue(new Date("2026-10-12T00:10:00Z"), "UTC", "23:50"); assert.equal(midnight.localDate, "2026-10-11"); assert.equal(midnight.due, true);
+  assert.equal(orchestrator.nextAgentRunAt(new Date("2026-03-08T06:55:00Z"), "America/New_York", "02:30"), "2026-03-08T07:00:00.000Z");
+  assert.equal(orchestrator.nextAgentRunAt(new Date("2026-03-08T06:55:00Z"), "America/New_York", "02:00"), "2026-03-08T07:00:00.000Z");
+  assert.equal(orchestrator.agentScheduleDue(new Date("2026-03-08T07:50:00Z"), "America/New_York", "02:00").due, true);
+  assert.equal(orchestrator.agentScheduleDue(new Date("2026-03-08T08:00:00Z"), "America/New_York", "02:00").due, false);
+  const first = orchestrator.agentScheduleDue(new Date("2026-11-01T05:30:00Z"), "America/New_York", "01:30"), second = orchestrator.agentScheduleDue(new Date("2026-11-01T06:30:00Z"), "America/New_York", "01:30"); assert.equal(first.localDate, second.localDate); assert.equal(first.due, true); assert.equal(second.due, true);
+  assert.throws(() => orchestrator.agentScheduleDue(now, "UTC", "24:00"), code("INVALID_SCHEDULE")); assert.throws(() => orchestrator.agentScheduleDue(now, "invalid-zone", "07:30"), code("INVALID_SCHEDULE"));
+});
+test("campaign resumes remain independent and automatic frequency excludes paused/manual campaigns", async () => {
+  const { alice } = await workspace(); const state = await alice.career.state(), original = state.resumes.find(r => r.active);
+  const secondId = await alice.career.saveResume({ title: "Independent campaign resume", targetRole: "Software Engineer", text: "Confirmed alternative Python project.\nPython", source: "manual" });
+  const campaign = await alice.saveSearch({ label: "Independent", preferences: state.preferences, enabled: true, resumeId: secondId, status: "active", frequency: "daily" });
+  const result = await orchestrator.startCareerAgentRun(alice, { searchId: campaign.id }, {}), tasks = await alice.ownedTasks(result.runs[0].id);
+  assert.equal(result.runs[0].context.resumeId, secondId); assert.equal(tasks.find(t => t.agentId === "resume_intelligence").output.resumeId, secondId);
+  assert.equal((await alice.commandState()).packages[0].snapshot.resume.id, secondId); assert.equal((await alice.career.account()).active_resume_id, original.id);
+  const date = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date(campaign.createdAt));
+  assert.equal(orchestrator.campaignScheduleDue(campaign, date, "Asia/Kolkata"), true);
+  assert.equal(orchestrator.campaignScheduleDue({ ...campaign, frequency: "manual" }, date, "Asia/Kolkata"), false);
+  assert.equal(orchestrator.campaignScheduleDue({ ...campaign, status: "paused", enabled: false }, date, "Asia/Kolkata"), false);
+  assert.equal(orchestrator.campaignScheduleDue({ ...campaign, frequency: "weekly" }, date, "Asia/Kolkata"), true);
+});
+test("automatic packages ask for real screening questions instead of copying unrelated expired private answers", async () => {
+  const { db, alice } = await workspace();
+  await alice.saveAnswer({ key: "private_relocation", question: "An unrelated prior employer question", value: "Private answer that must not enter another package", confirmed: true });
+  const expiry = new Date(Date.now() - 1000).toISOString();
+  db.db.prepare("UPDATE career_confirmed_answers SET confirmed_at=?,valid_until=?,reconfirm_at=? WHERE user_id='alice' AND key='private_relocation'").run(new Date(Date.now() - 2 * 86400000).toISOString(), expiry, expiry);
+  await alice.saveAnswer({ key: "job_specific_screening", question: "An earlier employer's screening question", value: "Generic key does not establish this employer's questions", confirmed: true });
+  await alice.saveAnswer({ key: jobScreeningKey("alice-job-0"), question: "Previously saved but not selected", value: "An unselected answer must not automatically satisfy the current required slot", confirmed: true });
+  const result = await orchestrator.startCareerAgentRun(alice, {}, {});
+  const task = (await alice.ownedTasks(result.runs[0].id)).find(t => t.agentId === "application_preparation");
+  assert.equal(task.output.packages.length, 1);
+  const pkg = (await alice.commandState()).packages[0];
+  assert.equal(pkg.snapshot.screeningAnswers.some(answer => answer.key === "private_relocation"), false);
+  const required = pkg.snapshot.screeningAnswers.find(answer => answer.key === jobScreeningKey("alice-job-0"));
+  assert.equal(required.classification, "UNKNOWN"); assert.ok(required.question.includes("Software Engineer at Example fixture 0"));
+  assert.ok(!JSON.stringify(pkg).includes("Private answer that must not enter another package"));
+  assert.ok(!JSON.stringify(pkg).includes("Generic key does not establish this employer's questions"));
+  assert.ok(!JSON.stringify(pkg).includes("An unselected answer must not automatically satisfy the current required slot"));
 });
