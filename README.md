@@ -1,125 +1,157 @@
-# DnyanGanga Knowledge Hub — career workspace
+# DnyanGanga Career Hub
 
-A light-theme career platform with a public website, interactive demonstration, and signed-in workspace backed by a relational database. Tagline: Learn Smarter, Build Faster, Grow Further. No reference website was used, as requested.
+**Your AI-Powered Career Growth Platform**
 
-This is a private test release, not a completed public production service. Live job feeds, document upload processing, external AI, voice recording, scheduled-message delivery, public sharing, administration, and payments stay disabled until their secure integrations are implemented, configured, and tested. Adding a key alone does not activate them.
+This update extends the existing website, source repository, private Sites URL, managed sign-in, D1 database and R2 binding. It preserves the supplied green/orange logo, light design, original routes and existing records. The public workflows of Resodro, LoopCV and Simplify informed feature selection; their content, assets and outcome claims were not copied. Review and integration evidence: [connections guide](docs/integrations-update.md).
 
-## What you can review
+The current release is a **private review build**. Core account workflows work with real database records. External AI, live job feeds, document processing, email and WhatsApp have implemented server adapters but remain disabled until their required access, infrastructure and acceptance checks are complete. No provider key, job permission, real message, payment or production performance result is implied.
 
-- Public product pages, real interface preview, original branding, responsive navigation.
-- Explicitly fictional `/demo` workspace. Activity stays in current session memory; it is not evidence of real jobs, customers, applications, or alerts.
-- `/dashboard`, protected by Sites' ChatGPT sign-in: owned profile/preferences, manually edited resume versions, user-supplied job descriptions, explainable matching, applications, tasks, and notification preferences.
-- Profile/resume revision references and owned data export. The tested workspace-deletion routine stays unavailable online until trusted fresh authentication is supported.
-- Clear unavailable states for integrations requiring credentials, approvals, or security capabilities.
+## What works and what needs setup
 
-**Sign in with ChatGPT** is supplied by Sites. The app does not create separate DnyanGanga password accounts, independently verify contact destinations, enforce application-level MFA, or supply its own recovery system. Those requested capabilities require platform support or a reviewed identity design. Career-workspace deletion does not delete a ChatGPT account.
+| Area | Working in this update | Remaining setup or limit |
+| --- | --- | --- |
+| Accounts | Existing Sign in with ChatGPT, private owner-bound workspace | Native identity owns registration/recovery/sessions; separate password accounts, trusted fresh authentication and MFA are not supplied by this app |
+| Profile | Editable career facts, multiple locations, mandatory/flexible preferences, salary range/currency/basis | Nonessential fields optional; no inferred or auto-confirmed qualifications |
+| Resumes | Manual editor/live preview, autosave/recovery, immutable versions, comparison, restore, explicit active selection/deletion, text export | Original PDF/DOCX ingestion is implemented but gated on a private scanner/converter service; no OCR or polished PDF/DOCX export |
+| Jobs | User-provided descriptions, source attribution, unknown fields, filter-first explained matching, saved jobs and candidate-updated applications | Official Greenhouse board adapter awaits authorized employer boards and separate display/digest/AI rights; other portals are unconnected |
+| Career support | Private persisted sessions, structured self-review, separate reviewed resume/cover-letter drafts, interview questions/answers/checklists and saved history | External AI requires approved server configuration; self-review is clearly labelled and is not a model evaluation; voice remains unavailable |
+| Alerts | Preferences, verified-destination workflow, per-channel consent, durable outbox, retries, deduplication and signed callbacks are implemented | No sending credentials or deployed external scheduler/relay; defaults are 08:00 Asia/Kolkata; bounded pilot scheduling is not large-audience capacity |
+| Privacy | Ownership checks, private files, conversation/document deletion and owned export | Public sharing, whole-account deletion and admin access fail closed pending trusted identity capabilities |
+| Commercial | Existing unconfigured pricing and disabled billing preserved | No new paid plans, checkout or payment credentials introduced |
 
-## Handover
+Candidate counts come from their activity. `/demo` uses explicitly fictional records in session memory and has no live connections. Opening an application link does not mark it Applied or submit a resume.
 
-- [Architecture, page map, security, acceptance checks, maintenance](docs/architecture-security.md)
-- [Integration research and operating-cost assumptions](docs/integrations-costs.md)
-- [Executed test evidence](docs/test-results.md)
-- [Placeholder configuration](.env.example)
+## Architecture and pages
 
-Neither the interface nor the checklist establishes ASVS certification, legal compliance, or PCI DSS compliance.
+The existing React/TypeScript/Vinext application runs on a Sites-managed Cloudflare Worker. D1 stores relational records; server SQL enforces ownership. R2 keeps originals and previews private. Provider credentials belong only in server secret storage. AI providers implement a replaceable interface. A separate Worker supplies Cron and public signed callbacks/unsubscribe without turning that service token into a user identity. Document conversion runs behind a private service binding on isolated Linux infrastructure.
 
-## Local run
+```mermaid
+flowchart LR
+  Browser --> Site[Existing Sites Worker and managed identity]
+  Site --> DB[Owned D1 records and durable outbox]
+  Site --> R2[Private originals and previews]
+  Site --> Processor[Private isolated scanner and converter]
+  Site --> AI[Approved AI adapter]
+  Site --> Jobs[Authorized employer feeds]
+  Site --> Delivery[Verified email and WhatsApp providers]
+  Cron[Separate scheduler and callback relay] --> Site
+```
 
-Prerequisites: Node.js **22.13 or newer**, npm, and a terminal. Git is needed for Sites publication. Retain the supplied Vinext starter's Sites build plugin and identity helpers.
+| Route | Purpose |
+| --- | --- |
+| `/`, `/features`, `/how-it-works`, `/faq` | Public product explanation and workflow |
+| `/contact`, `/pricing`, `/privacy`, `/terms`, `/security` | Support, unconfigured plans, policies and status |
+| `/demo` | Labelled fictional preview |
+| `/dashboard` | Profile completion, current resume, matches, progress, interviews and delivery status |
+| `/dashboard?view=profile` | My Profile |
+| `/dashboard?view=resumes` | My Resumes, editor and upload status |
+| `/dashboard?view=jobs`, `?view=saved` | Job Matches and Saved Jobs |
+| `/dashboard?view=applications` | Application Tracker |
+| `/dashboard?view=coach`, `?view=interview` | AI Career Assistant and Interview Practice |
+| `/dashboard?view=notifications`, `?view=settings` | Alerts and Settings |
+| `/dashboard?view=insights` | Preserved legacy URL; current research service remains unavailable |
+| `/admin` | Admin setup status; protected APIs deny access without trusted role and fresh MFA |
+| `/signin-with-chatgpt`, `/signout-with-chatgpt`, `/callback` | Reserved native identity routes |
+| `/api/career/[...path]` | Owned account API plus separately authenticated scheduler/callback endpoints |
 
-Run from this directory, `sites/dolphin-career`:
+The reusable light design remains in `app/globals.css`; shared navigation/cards/forms and the supplied logo are reused. Focus styles, reduced-motion support and responsive layouts are retained.
+
+## Handover and main files
+
+- [Security checklist, remaining risks, release and maintenance](docs/update-handover.md)
+- [Database, uploads, API contracts and backend tests](docs/backend-update.md)
+- [AI privacy, evidence validation, quotas and model configuration](docs/ai-update.md)
+- [Provider permissions, email/WhatsApp and scheduler deployment](docs/integrations-update.md)
+- [Current executed test evidence](docs/test-results.md)
+- [Server configuration example](.env.example), [private processor](services/document-processor/README.md), [scheduler example](worker/wrangler.scheduler.example.jsonc)
+
+| Files | Purpose |
+| --- | --- |
+| `app/ui/workspace.tsx`, `career-tools.tsx`, `career-view-types.ts`, `admin.tsx` | Updated candidate tools, typed integration UI and admin gate |
+| `app/ui/public.tsx`, `app/layout.tsx`, `app/globals.css` | Brand/tagline, honest product copy and light styles |
+| `app/api/career/[...path]/route.ts` | Owner checks, validation, safe uploads, AI and provider orchestration |
+| `lib/career-core.ts`, `career-store.ts` | Matching rules, immutable versions, private records and durable usage limits |
+| `lib/career-documents.ts`, `career-ai.ts`, `career-providers.ts`, `career-alerts.ts` | Server-only adapters and policy |
+| `db/schema.ts`, `drizzle/0001*`, `0002*`, `0003*` | Additive schema changes; original migration preserved |
+| `build/sites-worker.ts` | Response-specific script nonce CSP, security headers and private/no-store responses |
+| `worker/`, `services/document-processor/` | Separate scheduler/relay and isolated document worker source |
+| `tests/`, `docs/` | Repeatable checks and actual evidence/limitations |
+
+## Local run and database changes
+
+Use test data. Prerequisites: Node 22.13 or newer (tested with **24.16.0**), npm and Git. Retain the existing Sites starter/plugins and `.openai/hosting.json`. Do not expose the development identity to the internet.
+
+From `sites/dolphin-career`:
 
 ```powershell
 npm run install:ci
 npm run build
 ```
 
-The locked installation is repeatable; do not overlap installers. Build generates `dist/server/wrangler.json`.
-
-The initial migration is `drizzle/0000_odd_reptil.sql`. Apply it once to a new local database; apply future pending migrations in order:
-
-```powershell
-node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0000_odd_reptil.sql
-```
-
-Do not replay migrations already applied to the same local database. Keep generated migrations and the Drizzle journal together. Local state is separate from hosted data.
-
-```powershell
-npm run dev
-```
-
-Visit the loopback address printed by the server, normally `http://localhost:5173`. The portable starter simulates sign-in **only in loopback development**. Visit `/signin-with-chatgpt?return_to=/dashboard` for its fictional local identity and `/signout-with-chatgpt?return_to=/` to sign out. The simulated identity is not included in production builds. Do not expose the development server to a network or use real personal data.
-
-For the built Worker preview:
-
-```powershell
-npm start
-```
-
-This uses loopback Wrangler and does not simulate sign-in. Use `npm run dev` for the local mock-sign-in journey. `.wrangler/state`, `.sites-runtime`, `.vinext`, and environment files are checkout-local and must not be published.
-
-## Repeatable checks
-
-```powershell
-node --experimental-strip-types --test tests/career-security.test.mjs
-node ./node_modules/typescript/bin/tsc --noEmit
-npm run build
-npm audit --omit=dev
-```
-
-Review actual output. Compilation does not establish provider security, deployed account isolation, a complete dependency audit, or performance under load. Executed results belong in the security handover. Record failures/unavailable network checks honestly. End-to-end checks require two signed-in test users, anonymous requests, a private test deployment, and provider sandboxes.
-
-## Source map
-
-| Location | Purpose |
-| --- | --- |
-| `app/` | Public pages, demo, dashboard, auth helper, career API |
-| `lib/career-core.ts` | Validation, preferences, matching, safe data helpers |
-| `lib/career-store.ts` | Operations tied to the authenticated owner |
-| `db/schema.ts` | Relational table definitions |
-| `drizzle/` | Schema-only migrations and metadata |
-| `tests/career-security.test.mjs` | Policy/security unit tests |
-| `.openai/hosting.json` | Site identity and D1/R2 bindings; no secrets |
-| `.env.example` | Placeholders; no working credentials |
-| `docs/` | Architecture/security/integration/cost handover |
-
-## Private Sites deployment
-
-Sites creates a private site, provisions declared D1/R2 bindings, applies hosted migrations, builds/packages the Worker, and deploys the matching source version.
-
-1. Preserve the registered Site ID and declared `d1: "DB"`, `r2: "BUCKET"` bindings in `.openai/hosting.json`. Never put secrets there.
-2. Run checks/build with the installed Sites plugin's `scripts/build-site.mjs` from the project directory; standalone development can use `npm run build`.
-3. Synchronize/package through `scripts/site-workflow.mjs`, supplying source credentials through hidden stdin. It returns project ID, commit, and archive. Keep credentials out of files, shell arguments, and output.
-4. Save/deploy that archive with the private Sites deployment tool. Preserve private access while launch blockers remain.
-5. Confirm the native deployment result and run two-user/anonymous checks on that exact version. Local build success is not deployment evidence.
-
-`npm start` does not publish. Reuse the existing Site on retries.
-
-## Production release
-
-Use separate production Site/database/bucket/domain/provider accounts and secrets. Verify HTTPS, policies, storage privacy, logging, backup restoration, and identity/MFA capability. Obtain job-source/messaging approvals. Implement and test disabled adapters before collecting documents, sending alerts, sharing, or accepting money.
-
-Document workers, a durable queue, timezone scheduler, AI adapters, and hosted checkout are next-stage work described in the handover. Prices remain unconfigured and checkout disabled. Obtain an independent security review before live payments or broad sensitive-data collection.
-
-
-
-
-
-### This Windows host: launcher fallback
-
-If the npm launcher reports it cannot find `node_modules/npm/bin/npm-cli.js`, use the host's actual npm entrypoint for installation:
+On this Windows host, if the npm launcher cannot locate its entrypoint:
 
 ```powershell
 $env:npm_execpath = 'C:/Program Files/nodejs/node_modules/npm/bin/npm-cli.js'
 node scripts/install-ci.mjs
 node scripts/run-framework.mjs build
-node scripts/run-framework.mjs dev --host 127.0.0.1
 ```
 
-This is a local launcher workaround. Other hosts should use their own installed npm path. Keep the dev server on loopback. A build and a database migration are required before using the account dashboard.
+Build produces `dist/server/wrangler.json`. A new local database needs migrations 0000, 0001, 0002 and 0003 **once, in order**. An existing database needs only its pending migrations; never replay one. For each pending file use:
 
-### Launch recommendation
+```powershell
+node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0001_flippant_talisman.sql
+```
 
-Use the private review build with fictional data. Complete the disabled integrations, MFA/recent-auth support, document worker, notification queue, provider rights, remaining build-tool vulnerability review, backup drills, and independent security review before real personal-data collection or live payments. A custom domain has not been attached; DNS ownership and custom-domain configuration are separate steps.
+Substitute the exact pending filename: `0000_odd_reptil.sql`, `0001_flippant_talisman.sql`, `0002_clean_whiplash.sql`, `0003_smiling_nightmare.sql`. The updates add document/session/usage/provider/verification/dispatch tables and columns; they do not drop existing tables or replace accounts. Database schema/journal must stay together. Hosted Sites applies pending generated migrations through its release flow; a local command does not migrate hosted data.
 
+```powershell
+npm run dev
+```
 
+Or use `node scripts/run-framework.mjs dev` on this host. Visit `http://127.0.0.1:5173/signin-with-chatgpt?return_to=/dashboard` for the fixed fictional loopback identity. This development-only identity is excluded from production. `npm start` previews the built Worker at loopback without mock sign-in. `.wrangler/state`, `.sites-runtime`, `.dev.vars`, `*.secret` and `outputs/` are excluded from published source.
+
+## Run the checks
+
+```powershell
+npm test
+node node_modules/typescript/bin/tsc --noEmit --incremental false
+node tests/http-smoke.mjs
+npm run test:browser
+npm run build
+npm start
+```
+
+The HTTP and account browser checks need the dev server and migrated local D1. Header checks need a separate built Worker preview at 8787:
+
+```powershell
+node tests/header-smoke.mjs
+npm audit --omit=dev
+```
+
+Browser checks need installed Playwright and an available browser. On this host:
+
+```powershell
+$env:CAREER_PLAYWRIGHT_MODULE='C:/Users/jagta/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright'
+$env:CAREER_BROWSER_CHANNEL='msedge'
+```
+
+From `services/document-processor`, repeat `python -B -m unittest test_processor.py`. Python policy tests do not prove live malware scanning or Linux isolation. Read [test results](docs/test-results.md) for measured results and checks still pending.
+
+## Deploy the existing site and scheduled worker
+
+1. Keep the original Site ID, D1/R2 binding names, URL and private access in `.openai/hosting.json`. Do not create another site or put keys in the manifest.
+2. Install runtime values using native Sites environment settings; mark secrets as secret. Safe hosted defaults keep `AI_ENABLED`, `CAREER_JOBS_ENABLED` and `CAREER_ALERTS_ENABLED` false. `.env.example` is documentation, not production configuration.
+3. Run the current build/checks. The Sites `site-workflow.mjs` helper commits/pushes the exact source and creates its deployment archive. Supply its short-lived repository credential through hidden stdin, never a command argument or file.
+4. Save/deploy that exact archive with the private Sites operation. Check the returned deployment status. Keep owner-private access while the launch blockers remain.
+5. Deploy the separate scheduler/relay from `worker/` only after configuring its owned HTTPS endpoint, scheduler secret and authorized private Sites service access. Follow [exact steps](docs/integrations-update.md). Those credentials have not been generated here; no worker was deployed by this update.
+6. Deploy and independently verify the isolated processor/private binding before enabling uploads. Complete live provider sandboxes, signed callbacks, consent/STOP/unsubscribe, two-account isolation and backup drills before enabling a pilot.
+
+The rollback tag `pre-career-platform-2026-10-12` preserves the old source locally. To roll back, publish the previous known-good saved Sites version and turn off affected feature flags. Additive database migrations should remain in place; do not reverse or drop user data. Back up hosted records before migrations/release and rehearse restoration on a separate private staging environment; restoration has not been tested here.
+
+## Release limits
+
+Production-only dependency audit reported zero findings; the full audit still has eight high build/lint dependency findings. Full frontend lint has legacy errors; focused new-module lint and TypeScript checks pass. These results require review rather than a claim of complete ASVS verification. No load test, live provider send, independent security review, hosted two-account test or backup restoration was completed.
+
+The scheduler scans at most 50 accounts and attempts 30 dispatches/minute with a 60-minute catch-up window; 10,000 simultaneous 08:00 users exceed it. Documents and state retrieval need measured capacity and pagination before larger use. Use a small private pilot only after its external acceptance checks. Payments, admin role editing and public sharing remain disabled; do not recommend broad launch or sensitive-data collection based on local tests alone.
+
+The planning allowance of USD 140 / 810 / 7,400 monthly for 100 / 1,000 / 10,000 active users is conditional, not a quote or capacity commitment. Assumptions and unverified rate inputs are documented in [cost discussion](docs/integrations-update.md#costs-and-release-decisions). Replace them with actual provider contracts and measured token/message/storage use before setting prices.

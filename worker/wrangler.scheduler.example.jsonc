@@ -1,0 +1,13 @@
+{
+  "name": "dolphin-career-alert-scheduler",
+  "main": "scheduler.ts",
+  "compatibility_date": "2026-10-12",
+  "triggers": { "crons": ["* * * * *"] },
+  "vars": {
+    "CAREER_SITE_ORIGIN": "https://REPLACE_WITH_APPROVED_SITE_HOST",
+    "SITES_PRIVATE_AUDIENCE": "true"
+  }
+  // Put CAREER_SCHEDULER_SECRET and SITES_SERVICE_BEARER in Worker secret storage.
+  // The site also needs CAREER_SCHEDULER_SECRET in native Sites runtime secret storage.
+  // Copy this example to wrangler.scheduler.jsonc before an authorized deployment.
+}

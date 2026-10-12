@@ -1,3 +1,5 @@
+> Historical 11 October 2026 handover. Current implementation, status and evidence are in [update handover](update-handover.md), [provider setup](integrations-update.md) and [current test results](test-results.md). This older document does not describe the updated adapters.
+
 # Architecture and security handover
 
 **Product:** DnyanGanga Knowledge Hub  

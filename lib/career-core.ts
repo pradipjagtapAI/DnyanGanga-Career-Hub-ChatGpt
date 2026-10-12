@@ -6,7 +6,7 @@ export class CareerError extends Error {
     super(message); this.status = status; this.code = code;
   }
 }
-export const APPLICATION_STATUSES = ["Saved", "Preparing", "Applied", "Interview", "Offer", "Rejected", "Withdrawn"] as const;
+export const APPLICATION_STATUSES = ["Saved", "Preparing", "Applied", "Interview", "Offer", "Rejected", "Withdrawn", "Closed"] as const;
 export type ApplicationStatus = typeof APPLICATION_STATUSES[number];
 export const ARRANGEMENTS = ["Remote", "Hybrid", "On-site"] as const;
 export const INTEGRATIONS = {
@@ -36,6 +36,7 @@ export type Profile = {
 export type Preferences = {
   targetRoles: string[]; industries: string[]; preferredCities: string[]; relocate: boolean;
   workArrangements: string[]; employmentTypes: string[]; salaryAmount: number | null;
+  expectedSalaryMin: number | null; expectedSalaryMax: number | null; mandatorySalary: boolean;
   salaryCurrency: string; salaryBasis: "annual" | "monthly"; noticePeriod: string;
   excludeCompanies: string[]; excludeRoles: string[]; excludeLocations: string[];
   mandatoryLocation: boolean; mandatoryWorkArrangement: boolean; mandatoryEmploymentType: boolean;
@@ -45,10 +46,13 @@ export type NotificationSettings = {
   timeZone: string; dispatchTime: string; paused: boolean; consentRecordedAt: string | null;
   emailConsentRecordedAt: string | null; whatsappConsentRecordedAt: string | null;
   emailVerified: boolean; whatsappVerified: boolean; nextAlert: string | null;
+  maxJobsPerDigest: number;
 };
 export type ManualJob = {
-  title: string; company: string; location: string; workArrangement: string; employmentType: string;
-  minExperience: number; maxExperience: number | null; salary: string; requirements: string[];
+  title: string; company: string; location: string | null; workArrangement: string | null; employmentType: string | null;
+  minExperience: number | null; maxExperience: number | null; salary: string; requirements: string[];
+  salaryMin: number | null; salaryMax: number | null; salaryCurrency: string | null; salaryBasis: "annual" | "monthly" | null;
+  industry?: string | null; seniority?: string | null; responsibilities?: string[];
   description: string; url: string; postedAt: string | null; closed: boolean;
 };
 
@@ -56,10 +60,10 @@ export function defaultProfile(email = "", fullName = ""): Profile {
   return { fullName, email, headline: "", phone: "", whatsapp: "", currentCity: "", state: "", country: "India", summary: "", workHistory: "", education: "", projects: "", certifications: "", skills: [], portfolio: "", currentRole: "", totalExperience: 0, relevantExperience: 0 };
 }
 export function defaultPreferences(): Preferences {
-  return { targetRoles: [], industries: [], preferredCities: [], relocate: false, workArrangements: [], employmentTypes: [], salaryAmount: null, salaryCurrency: "INR", salaryBasis: "annual", noticePeriod: "", excludeCompanies: [], excludeRoles: [], excludeLocations: [], mandatoryLocation: true, mandatoryWorkArrangement: true, mandatoryEmploymentType: true };
+  return { targetRoles: [], industries: [], preferredCities: [], relocate: false, workArrangements: [], employmentTypes: [], salaryAmount: null, expectedSalaryMin: null, expectedSalaryMax: null, mandatorySalary: false, salaryCurrency: "INR", salaryBasis: "annual", noticePeriod: "", excludeCompanies: [], excludeRoles: [], excludeLocations: [], mandatoryLocation: true, mandatoryWorkArrangement: true, mandatoryEmploymentType: true };
 }
 export function defaultNotifications(): NotificationSettings {
-  return { emailEnabled: false, whatsappEnabled: false, emailConsent: false, whatsappConsent: false, timeZone: "Asia/Kolkata", dispatchTime: "08:00", paused: true, consentRecordedAt: null, emailConsentRecordedAt: null, whatsappConsentRecordedAt: null, emailVerified: false, whatsappVerified: false, nextAlert: null };
+  return { emailEnabled: false, whatsappEnabled: false, emailConsent: false, whatsappConsent: false, timeZone: "Asia/Kolkata", dispatchTime: "08:00", paused: true, consentRecordedAt: null, emailConsentRecordedAt: null, whatsappConsentRecordedAt: null, emailVerified: false, whatsappVerified: false, nextAlert: null, maxJobsPerDigest: 5 };
 }
 export function object(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new CareerError(400, "INVALID_INPUT", "Provide a JSON object.");
@@ -122,8 +126,12 @@ export function validatePreferences(value: unknown): Preferences {
   for (const key of ["targetRoles", "industries", "preferredCities", "employmentTypes", "excludeCompanies", "excludeRoles", "excludeLocations"] as const) output[key] = strings(input[key], key, 15);
   output.workArrangements = strings(input.workArrangements, "Work arrangements", 3);
   if (output.workArrangements.some((x) => !(ARRANGEMENTS as readonly string[]).includes(x))) throw new CareerError(400, "INVALID_INPUT", "Choose Remote, Hybrid, or On-site.");
-  for (const key of ["relocate", "mandatoryLocation", "mandatoryWorkArrangement", "mandatoryEmploymentType"] as const) output[key] = boolean(input[key], output[key]);
+  for (const key of ["relocate", "mandatoryLocation", "mandatoryWorkArrangement", "mandatoryEmploymentType", "mandatorySalary"] as const) output[key] = boolean(input[key], output[key]);
   output.salaryAmount = input.salaryAmount === undefined || input.salaryAmount === null ? null : number(input.salaryAmount, "Expected salary", 1_000_000_000);
+  output.expectedSalaryMin = input.expectedSalaryMin == null ? output.salaryAmount : number(input.expectedSalaryMin, "Minimum expected salary", 1_000_000_000);
+  output.expectedSalaryMax = input.expectedSalaryMax == null ? null : number(input.expectedSalaryMax, "Maximum expected salary", 1_000_000_000);
+  if (output.expectedSalaryMin !== null && output.expectedSalaryMax !== null && output.expectedSalaryMax < output.expectedSalaryMin) throw new CareerError(400, "INVALID_SALARY", "Maximum expected salary cannot be less than minimum expected salary.");
+  if (output.mandatorySalary && output.expectedSalaryMin === null && output.expectedSalaryMax === null) throw new CareerError(400, "INVALID_SALARY", "Set an expected salary range before making salary mandatory.");
   output.salaryCurrency = string(input.salaryCurrency ?? "INR", "Currency", 3).toUpperCase();
   if (!/^[A-Z]{3}$/.test(output.salaryCurrency)) throw new CareerError(400, "INVALID_INPUT", "Use a three-letter currency code.");
   if (input.salaryBasis !== undefined && input.salaryBasis !== "annual" && input.salaryBasis !== "monthly") throw new CareerError(400, "INVALID_INPUT", "Salary basis must be annual or monthly.");
@@ -131,16 +139,20 @@ export function validatePreferences(value: unknown): Preferences {
   output.noticePeriod = string(input.noticePeriod, "Availability", 200);
   return output;
 }
-export function validateNotifications(value: unknown, previous: NotificationSettings, now: string): NotificationSettings {
-  const input = object(value); keys(input, ["emailEnabled", "whatsappEnabled", "emailConsent", "whatsappConsent", "timeZone", "dispatchTime", "paused"]);
-  if (input.emailEnabled === true || input.whatsappEnabled === true) throw new CareerError(503, "PROVIDER_UNAVAILABLE", "Delivery is unavailable until providers and destinations are verified. You can save consent and schedule preferences.");
+export function validateNotifications(value: unknown, previous: NotificationSettings, now: string, capabilities = { email: false, whatsapp: false }): NotificationSettings {
+  const input = object(value); keys(input, ["emailEnabled", "whatsappEnabled", "emailConsent", "whatsappConsent", "timeZone", "dispatchTime", "paused", "maxJobsPerDigest"]);
   const timeZone = string(input.timeZone ?? previous.timeZone, "Time zone", 100, true);
   try { new Intl.DateTimeFormat("en", { timeZone }).format(); } catch { throw new CareerError(400, "INVALID_TIMEZONE", "Choose a valid IANA time zone."); }
   const dispatchTime = string(input.dispatchTime ?? previous.dispatchTime, "Dispatch time", 5);
   if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(dispatchTime)) throw new CareerError(400, "INVALID_TIME", "Use a time from 00:00 to 23:59.");
   const emailConsent = boolean(input.emailConsent, previous.emailConsent);
   const whatsappConsent = boolean(input.whatsappConsent, previous.whatsappConsent);
-  return { ...previous, emailEnabled: false, whatsappEnabled: false, emailConsent, whatsappConsent, timeZone, dispatchTime, paused: boolean(input.paused, previous.paused), consentRecordedAt: input.emailConsent !== undefined || input.whatsappConsent !== undefined ? now : previous.consentRecordedAt, emailConsentRecordedAt: input.emailConsent !== undefined ? now : previous.emailConsentRecordedAt ?? null, whatsappConsentRecordedAt: input.whatsappConsent !== undefined ? now : previous.whatsappConsentRecordedAt ?? null, nextAlert: null };
+  const emailEnabled = boolean(input.emailEnabled, previous.emailEnabled) && emailConsent;
+  const whatsappEnabled = boolean(input.whatsappEnabled, previous.whatsappEnabled) && whatsappConsent;
+  if ((emailEnabled && !capabilities.email) || (whatsappEnabled && !capabilities.whatsapp)) throw new CareerError(503, "PROVIDER_UNAVAILABLE", "Delivery requires a configured provider and a verified destination for each enabled channel.");
+  const maxJobsPerDigest = number(input.maxJobsPerDigest ?? previous.maxJobsPerDigest ?? 5, "Digest size", 10);
+  if (!Number.isInteger(maxJobsPerDigest) || maxJobsPerDigest < 1) throw new CareerError(400, "INVALID_INPUT", "Digest size must be an integer from 1 to 10.");
+  return { ...previous, emailEnabled, whatsappEnabled, emailConsent, whatsappConsent, timeZone, dispatchTime, paused: boolean(input.paused, previous.paused), consentRecordedAt: input.emailConsent !== undefined || input.whatsappConsent !== undefined ? now : previous.consentRecordedAt, emailConsentRecordedAt: input.emailConsent !== undefined ? now : previous.emailConsentRecordedAt ?? null, whatsappConsentRecordedAt: input.whatsappConsent !== undefined ? now : previous.whatsappConsentRecordedAt ?? null, nextAlert: null, maxJobsPerDigest };
 }
 export function validateResume(value: unknown) {
   const input = object(value); keys(input, ["title", "targetRole", "text", "source"]);
@@ -148,15 +160,24 @@ export function validateResume(value: unknown) {
   return { title: string(input.title, "Resume title", 160, true), targetRole: string(input.targetRole, "Target role", 160), text: string(input.text, "Resume text", 60000, true), source: "manual" };
 }
 export function validateJob(value: unknown): ManualJob {
-  const input = object(value); keys(input, ["title", "company", "location", "workArrangement", "employmentType", "minExperience", "maxExperience", "salary", "requirements", "description", "url", "postedAt", "closed"]);
-  const workArrangement = string(input.workArrangement, "Work arrangement", 20, true);
-  if (!(ARRANGEMENTS as readonly string[]).includes(workArrangement)) throw new CareerError(400, "INVALID_INPUT", "Choose Remote, Hybrid, or On-site.");
-  const minExperience = number(input.minExperience, "Required experience");
+  const input = object(value); keys(input, ["title", "company", "location", "workArrangement", "employmentType", "minExperience", "maxExperience", "salary", "salaryMin", "salaryMax", "salaryCurrency", "salaryBasis", "industry", "seniority", "responsibilities", "requirements", "description", "url", "postedAt", "closed"]);
+  const workArrangement = string(input.workArrangement, "Work arrangement", 20) || null;
+  if (workArrangement && !(ARRANGEMENTS as readonly string[]).includes(workArrangement)) throw new CareerError(400, "INVALID_INPUT", "Choose Remote, Hybrid, or On-site.");
+  const minExperience = input.minExperience == null ? null : number(input.minExperience, "Required experience");
   const maxExperience = input.maxExperience === undefined || input.maxExperience === null ? null : number(input.maxExperience, "Maximum experience");
-  if (maxExperience !== null && maxExperience < minExperience) throw new CareerError(400, "INVALID_INPUT", "Maximum experience cannot be less than minimum experience.");
+  if (maxExperience !== null && minExperience !== null && maxExperience < minExperience) throw new CareerError(400, "INVALID_INPUT", "Maximum experience cannot be less than minimum experience.");
   const postedAt = input.postedAt ? string(input.postedAt, "Posting date", 10) : null;
   if (postedAt && !/^\d{4}-\d{2}-\d{2}$/.test(postedAt)) throw new CareerError(400, "INVALID_INPUT", "Use an ISO posting date.");
-  return { title: string(input.title, "Job title", 200, true), company: string(input.company, "Company", 200, true), location: string(input.location, "Location", 200, true), workArrangement, employmentType: string(input.employmentType, "Employment type", 80) || "Full-time", minExperience, maxExperience, salary: string(input.salary, "Salary", 200), requirements: strings(input.requirements, "Requirements", 50), description: string(input.description, "Job description", 30000), url: safePublicLink(input.url), postedAt, closed: boolean(input.closed) };
+  if (postedAt && (!Number.isFinite(Date.parse(postedAt)) || new Date(postedAt).toISOString().slice(0, 10) !== postedAt)) throw new CareerError(400, "INVALID_INPUT", "Provide a real posting date.");
+  const salaryMin = input.salaryMin == null ? null : number(input.salaryMin, "Minimum salary", 1_000_000_000);
+  const salaryMax = input.salaryMax == null ? null : number(input.salaryMax, "Maximum salary", 1_000_000_000);
+  const salaryCurrency = string(input.salaryCurrency, "Salary currency", 3).toUpperCase() || null;
+  const salaryBasis = input.salaryBasis == null || input.salaryBasis === "" ? null : input.salaryBasis;
+  if (salaryCurrency && !/^[A-Z]{3}$/.test(salaryCurrency)) throw new CareerError(400, "INVALID_SALARY", "Use a three-letter salary currency.");
+  if (salaryBasis !== null && salaryBasis !== "annual" && salaryBasis !== "monthly") throw new CareerError(400, "INVALID_SALARY", "Salary basis must be monthly or annual.");
+  if (salaryMin !== null && salaryMax !== null && salaryMax < salaryMin) throw new CareerError(400, "INVALID_SALARY", "Maximum salary cannot be less than minimum salary.");
+  if ((salaryMin !== null || salaryMax !== null) && (!salaryCurrency || !salaryBasis)) throw new CareerError(400, "INVALID_SALARY", "A numeric salary needs its currency and monthly or annual basis.");
+  return { title: string(input.title, "Job title", 200, true), company: string(input.company, "Company", 200, true), location: string(input.location, "Location", 200) || null, workArrangement, employmentType: string(input.employmentType, "Employment type", 80) || null, minExperience, maxExperience, salary: string(input.salary, "Salary", 200), salaryMin, salaryMax, salaryCurrency, salaryBasis, industry: string(input.industry, "Industry", 160) || null, seniority: string(input.seniority, "Seniority", 100) || null, responsibilities: strings(input.responsibilities, "Responsibilities", 30), requirements: strings(input.requirements, "Requirements", 50), description: string(input.description, "Job description", 30000), url: safePublicLink(input.url), postedAt, closed: boolean(input.closed) };
 }
 export function validateApplication(value: unknown, previousStatus?: string) {
   const input = object(value); keys(input, ["jobId", "status", "notes", "reminderAt", "resumeId", "confirmedApplied"]);
@@ -167,10 +188,13 @@ export function validateApplication(value: unknown, previousStatus?: string) {
   if (reminderAt && !Number.isFinite(Date.parse(reminderAt))) throw new CareerError(400, "INVALID_INPUT", "Provide a valid reminder date.");
   return { jobId: string(input.jobId, "Job ID", 80), status, notes: string(input.notes, "Notes", 5000), reminderAt, resumeId: input.resumeId ? string(input.resumeId, "Resume ID", 80) : null };
 }
-export function assertMutationRequest(request: Request) {
+export function assertSameOrigin(request: Request) {
   let origin: string;
   try { origin = new URL(request.url).origin; } catch { throw new CareerError(400, "INVALID_REQUEST", "Invalid request."); }
   if (request.headers.get("origin") !== origin || request.headers.get("x-career-action") !== "1" || ["cross-site", "none"].includes(request.headers.get("sec-fetch-site") ?? "")) throw new CareerError(403, "ORIGIN_REJECTED", "This action must be requested from this website.");
+}
+export function assertMutationRequest(request: Request) {
+  assertSameOrigin(request);
   if (!/^application\/json(?:\s*;|$)/i.test(request.headers.get("content-type") ?? "")) throw new CareerError(415, "JSON_REQUIRED", "Use a JSON request.");
 }
 export async function readJsonBounded(request: Request, max = 100_000): Promise<Record<string, unknown>> {
@@ -190,28 +214,63 @@ export async function readJsonBounded(request: Request, max = 100_000): Promise<
   try { return object(JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes))); }
   catch (error) { if (error instanceof CareerError) throw error; throw new CareerError(400, "INVALID_JSON", "The request body is not valid JSON."); }
 }
-const normalize = (value: string) => value.toLocaleLowerCase("en").trim().replace(/\s+/g, " ");
-const matchesAny = (value: string, terms: string[]) => terms.some((term) => normalize(value).split(/[,;/]/).map((x) => x.trim()).includes(normalize(term)));
-const containsAny = (value: string, terms: string[]) => terms.some((term) => normalize(value).includes(normalize(term)));
+const normalize = (value: string | null | undefined) => (value ?? "").toLocaleLowerCase("en").trim().replace(/\s+/g, " ");
+const matchesAny = (value: string | null, terms: string[]) => terms.some((term) => normalize(value).split(/[,;/]/).map((x) => x.trim()).includes(normalize(term)));
+const containsAny = (value: string | null, terms: string[]) => terms.some((term) => normalize(value).includes(normalize(term)));
+const EQUIVALENT_SKILLS = [["js", "javascript"], ["ts", "typescript"], ["postgres", "postgresql"], ["hr", "human resources"], ["gd&t", "geometric dimensioning and tolerancing"]];
+const RELATED_SKILLS = [["react", "vue", "angular"], ["python", "javascript", "java", "c#"], ["catia", "solidworks", "nx"], ["postgresql", "mysql", "sqlite"]];
+export function compareSalary(job: ManualJob, preferences: Preferences) {
+  const low = preferences.expectedSalaryMin ?? preferences.salaryAmount ?? null;
+  const high = preferences.expectedSalaryMax ?? null;
+  if (low === null && high === null) return { status: "not-requested", reason: "No salary range configured" };
+  if ((job.salaryMin == null && job.salaryMax == null) || !job.salaryCurrency || !job.salaryBasis) return { status: "unknown", reason: "Listing has no comparable numeric salary" };
+  if (job.salaryCurrency !== preferences.salaryCurrency) return { status: "unknown", reason: "Salary currencies differ; no exchange-rate assumptions are used" };
+  const factor = job.salaryBasis === preferences.salaryBasis ? 1 : job.salaryBasis === "monthly" ? 12 : 1 / 12;
+  const jobLow = job.salaryMin == null ? null : job.salaryMin * factor;
+  const jobHigh = job.salaryMax == null ? null : job.salaryMax * factor;
+  if ((low !== null && jobHigh === null) || (high !== null && jobLow === null)) return { status: "unknown", reason: "Salary range is incomplete for the requested bounds" };
+  const overlaps = (low === null || jobHigh! >= low) && (high === null || jobLow! <= high);
+  return { status: overlaps ? "overlap" : "outside", reason: `Ranges ${overlaps ? "overlap" : "do not overlap"} in ${preferences.salaryCurrency} per ${preferences.salaryBasis}; monthly/annual conversion uses 12 months` };
+}
 export function matchJob(job: ManualJob, profile: Profile, preferences: Preferences, activeResumeText?: string) {
   const excludedReasons: string[] = [];
   const cities = preferences.preferredCities.length ? preferences.preferredCities : profile.currentCity ? [profile.currentCity] : [];
   if (job.closed) excludedReasons.push("Marked closed");
   if (preferences.mandatoryLocation && cities.length && !matchesAny(job.location, cities)) excludedReasons.push("Outside mandatory locations");
-  if (preferences.mandatoryWorkArrangement && preferences.workArrangements.length && !preferences.workArrangements.includes(job.workArrangement)) excludedReasons.push("Outside mandatory work arrangements");
+  if (preferences.mandatoryWorkArrangement && preferences.workArrangements.length && (!job.workArrangement || !preferences.workArrangements.includes(job.workArrangement))) excludedReasons.push("Outside mandatory work arrangements");
   if (preferences.mandatoryEmploymentType && preferences.employmentTypes.length && !matchesAny(job.employmentType, preferences.employmentTypes)) excludedReasons.push("Outside mandatory employment types");
   if (containsAny(job.company, preferences.excludeCompanies)) excludedReasons.push("Excluded company");
   if (containsAny(job.title, preferences.excludeRoles)) excludedReasons.push("Excluded role");
   if (containsAny(job.location, preferences.excludeLocations)) excludedReasons.push("Excluded location");
-  const confirmed = new Set(profile.skills.filter((skill) => activeResumeText === undefined || resumeContainsSkill(activeResumeText, skill)).map(normalize));
-  const matchedSkills = job.requirements.filter((skill) => confirmed.has(normalize(skill)));
-  const missingSkills = job.requirements.filter((skill) => !confirmed.has(normalize(skill)));
-  const roleMatched = !preferences.targetRoles.length || containsAny(job.title, preferences.targetRoles);
-  const experienceMatched = profile.relevantExperience >= job.minExperience && (job.maxExperience === null || profile.relevantExperience <= job.maxExperience);
-  const skillsPoints = job.requirements.length ? 60 * matchedSkills.length / job.requirements.length : 0;
-  const score = Math.round(skillsPoints + (roleMatched ? 20 : 0) + (experienceMatched ? 20 : 0));
-  const uncertainty = [!job.requirements.length ? "No structured requirements were supplied" : "", !experienceMatched ? "Experience range needs review" : "", !roleMatched ? "Title does not match a target role" : "", !preferences.preferredCities.length && !profile.currentCity ? "No location preference is configured" : "", activeResumeText === undefined ? "No active resume: matching uses the confirmed profile only" : ""].filter(Boolean);
-  return { matchedSkills, missingSkills, relevance: { score: excludedReasons.length ? null : score, label: excludedReasons.length ? "Excluded by preferences" : score >= 80 ? "Strong relevance" : score >= 50 ? "Worth reviewing" : "Limited relevance", eligible: excludedReasons.length === 0, excludedReasons, uncertainty, method: "Mandatory filters first. Then exact confirmed skill overlap (60%), target title (20%), and relevant experience range (20%). When a resume is active, a confirmed skill must also appear in its text. This is a transparent heuristic, not an ATS score or hiring prediction.", profileRevision: null as number | null, resumeVersion: null as number | null } };
+  const salaryComparison = compareSalary(job, preferences);
+  if (preferences.mandatorySalary && !["overlap", "not-requested"].includes(salaryComparison.status)) excludedReasons.push(salaryComparison.status === "unknown" ? "Mandatory salary cannot be verified" : "Outside mandatory salary range");
+  const confirmed = profile.skills.filter((skill) => activeResumeText === undefined || resumeContainsSkill(activeResumeText, skill));
+  const matchedSkills: string[] = [], missingSkills: string[] = [], relatedSkills: string[] = [];
+  const skillEvidence: {requirement: string; candidateSkill: string; kind: string; explanation: string}[] = [];
+  for (const requirement of job.requirements) {
+    const exact = confirmed.find((skill) => normalize(skill) === normalize(requirement));
+    const equivalent = confirmed.find((skill) => EQUIVALENT_SKILLS.some((group) => group.includes(normalize(skill)) && group.includes(normalize(requirement))));
+    const related = confirmed.find((skill) => RELATED_SKILLS.some((group) => group.includes(normalize(skill)) && group.includes(normalize(requirement))));
+    if (exact || equivalent) { matchedSkills.push(requirement); skillEvidence.push({ requirement, candidateSkill: exact ?? equivalent!, kind: exact ? "exact" : "equivalent-term", explanation: exact ? "Confirmed profile skill matches the listed requirement" : "Explicit terminology alias; verify role-specific depth" }); }
+    else { missingSkills.push(requirement); if (related) { relatedSkills.push(requirement); skillEvidence.push({ requirement, candidateSkill: related, kind: "transferable", explanation: "Related tool or language may transfer; required skill remains unverified" }); } }
+  }
+  if (!job.requirements.length) for (const skill of confirmed.filter((value) => resumeContainsSkill(job.description, value))) { matchedSkills.push(skill); skillEvidence.push({ requirement: skill, candidateSkill: skill, kind: "description-keyword", explanation: "Whole-term mention in the description; not a verified requirement" }); }
+  const roleMatched = preferences.targetRoles.length > 0 && containsAny(job.title, preferences.targetRoles);
+  const experienceKnown = job.minExperience != null || job.maxExperience != null;
+  const experienceMatched = experienceKnown && (job.minExperience == null || profile.relevantExperience >= job.minExperience) && (job.maxExperience == null || profile.relevantExperience <= job.maxExperience);
+  const skillsPoints = job.requirements.length ? 60 * (matchedSkills.length + relatedSkills.length * 0.25) / job.requirements.length : Math.min(30, matchedSkills.length * 10);
+  const components = { skills: Math.round(skillsPoints), targetRole: roleMatched ? 20 : 0, experience: experienceMatched ? 20 : 0 };
+  const careerText=[profile.summary,profile.workHistory,profile.projects,profile.education,profile.certifications,profile.currentRole].join("\n");
+  const reviewEvidence=[
+    ...(job.industry?[{category:"industry",requested:job.industry,evidence:resumeContainsSkill(careerText,job.industry)?`Whole-term mention in confirmed career history: ${job.industry}`:preferences.industries.some(x=>normalize(x)===normalize(job.industry))?"Listed as a target industry; prior experience is unverified":"No exact confirmed profile evidence",status:"review-required"}]:[]),
+    ...(job.seniority?[{category:"seniority",requested:job.seniority,evidence:resumeContainsSkill(profile.currentRole,job.seniority)?`Mention in confirmed current role: ${job.seniority}`:"Seniority is not established by years of experience alone",status:"review-required"}]:[]),
+    ...(job.responsibilities??[]).map(value=>({category:"responsibility",requested:value,evidence:resumeContainsSkill(careerText,value)?`Exact phrase in confirmed career details: ${value}`:"No exact confirmed career-history phrase; assess transferable experience",status:"review-required"})),
+    ...job.requirements.filter(value=>/\b(?:degree|bachelor|master|phd|diploma|certifi|licen[cs]e)\b/i.test(value)).map(value=>({category:"qualification",requested:value,evidence:resumeContainsSkill(`${profile.education}\n${profile.certifications}`,value)?`Exact phrase in confirmed education/certifications: ${value}`:"Qualification must be checked against confirmed education and certifications",status:"review-required"})),
+  ];
+  const score = Math.round(skillsPoints + components.targetRole + components.experience);
+  const uncertainty = [!job.requirements.length ? "No structured requirements supplied; description mentions are weak evidence" : "", !experienceKnown ? "Experience requirement is unknown" : !experienceMatched ? "Experience range needs review" : "", !roleMatched ? "No configured target title match" : "", !job.location ? "Location is unknown" : "", !job.workArrangement ? "Work arrangement is unknown" : "", !job.employmentType ? "Employment type is unknown" : "", relatedSkills.length ? "Transferable skills do not establish required proficiency" : "", salaryComparison.status === "unknown" ? salaryComparison.reason : "", activeResumeText === undefined ? "No active resume: matching uses the confirmed profile only" : ""].filter(Boolean);
+  if(reviewEvidence.length)uncertainty.push("Industry, seniority, responsibility and qualification evidence requires review and is not included in the score");
+  return { matchedSkills, missingSkills, relatedSkills, skillEvidence, reviewEvidence, salaryComparison, relevance: { score: excludedReasons.length ? null : score, label: excludedReasons.length ? "Excluded by preferences" : score >= 80 ? "Strong relevance" : score >= 50 ? "Worth reviewing" : "Limited relevance", eligible: excludedReasons.length === 0, excludedReasons, uncertainty, components, method: "Mandatory filters first. Up to 60 skill points (exact/equivalent: full; transferable: quarter credit while still missing), 20 target-title points, 20 verified experience points. Unstructured description mentions receive at most 30 skill points. Active-resume skills must also be confirmed in the profile. Salary comparisons never assume exchange rates. Industry, seniority, responsibilities and qualifications are surfaced with exact evidence for review and are not scored. This heuristic is not an ATS score or hiring prediction.", profileRevision: null as number | null, resumeVersion: null as number | null } };
 }
 export function resumeContainsSkill(text: string, skill: string): boolean {
   const escaped = normalize(skill).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");

@@ -1,3 +1,5 @@
+> Historical 11 October 2026 handover. Current implementation, status and evidence are in [update handover](update-handover.md), [provider setup](integrations-update.md) and [current test results](test-results.md). This older document does not describe the updated adapters.
+
 # Integration access, production prerequisites, and cost model
 
 Research date: 11 October 2026. This document records verified public documentation and planning assumptions. It does not assert that provider access, production delivery, payment processing, or a security assessment has been completed. Use the release test report for actual implementation and test evidence.

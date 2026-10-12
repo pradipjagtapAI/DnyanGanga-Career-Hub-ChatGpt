@@ -31,7 +31,7 @@ assert.equal(initialResponse.status, 200, "Apply the D1 migration before running
 const initial = await initialResponse.json();
 assert.equal(initial.profile.email, "seedy@sites.test", "Refusing to mutate a real account.");
 check(initialResponse.headers.get("cache-control")?.includes("no-store"), "Workspace data must be uncacheable.");
-const createdResumes = []; let jobId; let taskId;
+const createdResumes = []; const sessions = []; const generatedDocuments=[]; let jobId; let taskId;
 const nonce = `${Date.now()}-${Math.floor(Math.random() * 10000)}`;
 try {
   const crossOrigin = await call("PUT", "profile", { profile: initial.profile, preferences: initial.preferences }, { origin: "https://attacker.example" });
@@ -61,12 +61,29 @@ try {
   check(job.response.status === 201, `Manual job import must succeed (received ${job.response.status}, ${job.data.code ?? "framework"}).`); jobId = job.data.id;
   const importedJob = job.data.state.jobs.find((value) => value.id === jobId);
   check(importedJob.source === "manual" && importedJob.lastCheckedAt === null, "Unverified imports must retain source attribution.");
+  const rawUpload=await fetch(endpoint("documents/upload"),{method:"POST",headers:{cookie,origin:base.origin,"content-type":"application/pdf","x-career-action":"1","x-career-filename":"synthetic.pdf",connection:"close"},body:"%PDF-1.7\n1 0 obj << /Type /Catalog >> endobj\n%%EOF"});
+  check(rawUpload.status===503,"Raw uploads must fail closed without private processor configuration.");
+  const unknownDocument=await get("documents/unknown-document/preview");check(unknownDocument.status===404,"Predictable private document references must not reveal files.");
+  const manualAI=await call("POST","ai",{mode:"coverletter",jobId});
+  check(manualAI.response.status===201&&manualAI.data.result.source==="self-review","Owned manual description must support honest self-review without live provider keys.");sessions.push(manualAI.data.sessionId);
+  const cover=await call("POST",`ai-sessions/${manualAI.data.sessionId}/review`,{confirmed:true,kind:"coverletter",title:`Synthetic cover ${nonce}`});
+  check(cover.response.status===201,"Owned reviewed cover draft must persist.");generatedDocuments.push(cover.data.id);
+  const coverDownload=await get(`generated-documents/${cover.data.id}/download`);check(coverDownload.status===200&&(await coverDownload.text()).includes("Synthetic HTTP test"),"Reviewed cover download must use confirmed owned resume text.");
+  const anonymousCover=await fetch(endpoint(`generated-documents/${cover.data.id}/download`));check(anonymousCover.status===401,"Cover drafts must not be publicly downloadable.");
+  const interview=await call("POST","ai",{mode:"interview_questions",jobId});sessions.push(interview.data.sessionId);
+  check(interview.response.status===201&&interview.data.result.questions.length>0,"Role-specific self-review practice must return questions.");
+  const question=interview.data.result.questions[0].question;
+  const feedback=await call("POST","ai",{mode:"interview_feedback",jobId,sessionId:interview.data.sessionId,expectedRevision:0,question,answer:"I used Python to inspect synthetic test data and explained the result."});
+  check(feedback.response.status===201&&feedback.data.state.aiSessions.find(s=>s.id===interview.data.sessionId)?.mode==="interview_feedback","Feedback must update the owned interview mode and zero-based revision.");
+  check(feedback.data.state.metrics.practiceSessions>=1,"Completed practice must contribute to actual activity metrics.");
+  const staleAI=await call("POST","ai",{mode:"interview_feedback",jobId,sessionId:interview.data.sessionId,expectedRevision:0,question,answer:"Stale answer"});check(staleAI.response.status===409,"Stale interview revisions must be rejected before provider work.");
   const application = await call("POST", "applications", { jobId, status: "Saved", notes: "Synthetic test" });
   check(application.response.status === 201, "Application tracking must succeed.");
   const notConfirmed = await call("PATCH", `applications/${application.data.id}`, { status: "Applied" });
   check(notConfirmed.response.status === 400, "Applied status must require user confirmation.");
   const confirmed = await call("PATCH", `applications/${application.data.id}`, { status: "Applied", confirmedApplied: true });
   check(confirmed.response.status === 200 && confirmed.data.state.applications.find((value) => value.id === application.data.id).submittedAt, "Confirmed submission must be recorded.");
+  const closed=await call("PATCH",`applications/${application.data.id}`,{status:"Closed",notes:"Synthetic closure"});check(closed.response.status===200&&closed.data.state.applications.find(a=>a.id===application.data.id)?.submittedAt,"Closed outcomes must preserve confirmed submission history.");
   const task = await call("POST", "tasks", { title: `Synthetic HTTP test task ${nonce}` });
   check(task.response.status === 201, "Career task creation must succeed."); taskId = task.data.id;
   const finished = await call("PATCH", `tasks/${taskId}`, { completed: true });
@@ -78,7 +95,9 @@ try {
   console.log(`HTTP smoke passed ${checks} checks using the localhost test identity.`);
 } finally {
   if (initial.activeResumeId) await call("POST", `resumes/${initial.activeResumeId}/active`);
-  for (const id of createdResumes) await call("DELETE", `resumes/${id}`);
+  for (const id of sessions) if(id)await call("DELETE",`ai-sessions/${id}`);
+  for (const id of generatedDocuments) await call("DELETE",`generated-documents/${id}`);
+  for (const id of createdResumes) await call("DELETE", `resumes/${id}`,{confirmActive:true});
   if (jobId) await call("DELETE", `jobs/${jobId}`);
   if (taskId) await call("DELETE", `tasks/${taskId}`);
 }

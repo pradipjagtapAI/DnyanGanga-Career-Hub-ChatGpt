@@ -1,0 +1,36 @@
+services:
+  scanner:
+    image: clamav/clamav:1.4
+    volumes:
+      - signatures:/var/lib/clamav
+      - ./clamd.conf:/etc/clamav/clamd.conf:ro
+    networks: [private_processing, signature_updates]
+    mem_limit: 4g
+    cpus: 1
+    pids_limit: 128
+    security_opt: ["no-new-privileges:true"]
+    restart: unless-stopped
+  processor:
+    build: .
+    ports: ["127.0.0.1:8088:8088"]
+    volumes: ["signatures:/signatures:ro"]
+    secrets: [document_token]
+    networks: [private_processing]
+    read_only: true
+    tmpfs: ["/tmp:size=64m,mode=1777,noexec,nosuid,nodev"]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 512m
+    cpus: 1
+    pids_limit: 16
+    depends_on: [scanner]
+    restart: unless-stopped
+networks:
+  private_processing:
+    internal: true
+  signature_updates: {}
+volumes:
+  signatures: {}
+secrets:
+  document_token:
+    file: ./document-token.secret

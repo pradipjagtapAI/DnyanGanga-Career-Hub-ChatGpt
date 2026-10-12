@@ -1,0 +1,21 @@
+{
+  "passed": true,
+  "scope": "Local mock sign-in + actual D1 + browser; synthetic data only; no external AI or delivery",
+  "checks": [
+    "Evidence, gaps, version and fit limitation visible; job saved",
+    "Saved Jobs uses real application records",
+    "Reviewed new resume saved; prior active version unchanged",
+    "Owned cover letter review and saved text",
+    "Interview questions, answer, feedback and history survive reload",
+    "Digest limit persists without falsely enabling unconfigured delivery",
+    "Assistant and saved history fit mobile, tablet and desktop",
+    "Administrator controls fail closed without trusted fresh MFA",
+    "Explicit active-version deletion clears selection without deleting other versions"
+  ],
+  "pageErrors": [],
+  "viewports": [
+    390,
+    768,
+    1440
+  ]
+}

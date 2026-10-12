@@ -1,0 +1,10 @@
+name = "career-private-document-bridge"
+main = "bridge.ts"
+compatibility_date = "2026-10-12"
+workers_dev = false
+preview_urls = false
+
+# Configure this with the protected HTTPS tunnel origin; never a user-supplied URL.
+[vars]
+DOCUMENT_PROCESSOR_ORIGIN = "https://replace-with-your-protected-processor.example"
+# DOCUMENT_PROCESSOR_TOKEN is a Worker secret, never a var.

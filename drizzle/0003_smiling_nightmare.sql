@@ -1,0 +1,1 @@
+ALTER TABLE `career_alert_dispatches` ADD `message_payload` text;

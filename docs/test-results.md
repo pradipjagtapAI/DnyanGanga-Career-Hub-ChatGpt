@@ -1,3 +1,40 @@
+# Current update test evidence — 12 October 2026
+
+These results were actually observed on the local Windows development host with Node 24.16.0 and Python 3.12.10. They do not establish production two-account isolation, provider permissions, live deliveries, full ASVS verification or performance under load.
+
+| Check | Result | Scope / repeat command |
+| --- | --- | --- |
+| Combined backend/AI/provider tests | **109 passed, 0 failed**, 1,520.0184 ms | `node --experimental-strip-types --test tests/career-security.test.mjs tests/career-ai.test.mjs tests/provider-alerts.test.mjs`; real prepared SQLite SQL/all migrations, mocked R2/scanner/AI/feed/senders, official Resend signature checks |
+| Private processor policy | **8 passed**, 0.017 s | From services/document-processor: `python -B -m unittest test_processor.py`; real bounded DOCX parsing, mocked scan; no Docker/ClamAV/Linux runtime |
+| Actual local HTTP journey | **36 checks passed** | `node tests/http-smoke.mjs`; development-only identity plus local D1; synthetic records removed; includes private drafts, upload gate, stale session conflict and independent gates |
+| Fictional-demo browser | **7 groups passed, 0 page errors** | `node tests/browser-smoke.mjs` |
+| Signed-in local browser | **8 groups passed, 0 page errors** | `node tests/account-browser-smoke.mjs`; actual local D1, synthetic cleanup |
+| Updated account browser | **9 groups passed, 0 page errors** | `node tests/upgrade-browser-smoke.mjs`; match evidence, saved jobs, separate draft, cover letter, saved interview, alert limit, mobile/tablet/desktop, admin gate, explicit active-resume deletion |
+| Brand/responsive layout | Widths **320, 390, 768, 1,024 and 1,440 passed** | Logo loaded, no header overlap or home overflow, sidebar logo visible; supplied logo retained |
+| Built Worker/browser headers | **9 checks passed, 0 page errors** | `node tests/header-smoke.mjs` against loopback built Worker at 8787; fresh matching script nonces, no script unsafe-inline, HTML no-store, successful hydration/navigation, injected inline script blocked, anonymous API 401 |
+| TypeScript | **Passed, exit 0** | `node node_modules/typescript/bin/tsc --noEmit --incremental false` |
+| Production build | **Passed, exit 0** | `node scripts/run-framework.mjs build`; current Vinext/RSC static-classification and Vite future-loader warnings are retained |
+| Focused lint | **0 errors** | New server/AI/provider/document/store/core/API/tools/admin/worker files and AI/provider tests; build/sites-worker.ts ignored by standard config (typecheck/build/header tests cover it) |
+| Full project lint | **Failed: 98 errors, 12 warnings** | `node node_modules/eslint/bin/eslint.js . --ignore-pattern dist --ignore-pattern .next`; legacy frontend any, hooks, link/entity and unused-code findings remain |
+| Production dependency audit | **0 findings** | `npm audit --omit=dev --json`; docs/dependency-audit-update-production.json |
+| Complete dependency audit | **8 high findings, no critical; exit 1** | `npm audit --json`; docs/dependency-audit-update.json; unresolved build/lint braces advisory, no unsafe forced downgrade applied |
+| Source/client heuristic key scan | **53 text files checked, 0 patterns/0 server-only markers** | docs/secret-scan-update.json; source and built browser bundle; synthetic test fixtures excluded. Not a complete history or credential proof |
+| Migration preservation | **Passed in policy tests; local pending migrations applied** | Original schema upgraded through additive0001/0002/0003 without losing legacy records; no hosted restoration proof |
+
+Browser scripts require Playwright and an installed browser. README gives the host-specific Edge/runtime settings. Local HTTP/browser checks use a fictional development identity on loopback only. They never establish access to hosted user accounts or send applications/messages.
+
+The update added evidence-based matching, source permissions, confirmed draft provenance, original/preview separation, destination verification, independent consent, durable outbox/idempotency, signed callback rollback/order handling, context cancellation and private owned sessions. See [backend details](backend-update.md), [AI evidence](ai-update.md), [provider evidence](integrations-update.md) and [security checklist](update-handover.md).
+
+## Checks not completed
+
+No live job feed, external AI call, verified-domain email, WhatsApp template send/delivery/STOP, real Cron/relay invocation, private scanner/converter deployment, production two-account/anonymous-file journey, backup restore, full accessibility audit, independent ASVS review, or stated-load test was completed. HTTPS/HSTS was not locally verified. Payment tests are not applicable to this update because no checkout/paid entitlement existed or was activated; future payment acceptance needs independent server/signature/reconciliation/concurrency tests.
+
+The scheduler's bounds are not measured capacity. A 10,000-account synchronized audience exceeds the supplied scan/catch-up window. Current browser state retrieval is not paginated. Keep broad launch and sensitive live features blocked until their acceptance work is complete.
+
+## Historical results from the previous source
+
+The dated material below documents the 11 October source and its original audits. It is retained as evidence; its disabled-feature statements and test totals are superseded by the update above. Raw historical audit reports remain unchanged.
+
 # Test evidence
 
 Executed on 11 October 2026 using Node v24.16.0. Results below are observed outputs, not a security certification.
