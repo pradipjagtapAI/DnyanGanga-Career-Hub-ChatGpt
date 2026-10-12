@@ -134,3 +134,50 @@ export const generatedDocuments = sqliteTable("career_generated_documents", {
   id: text("id").primaryKey(), userId: text("user_id").notNull().references(() => careerAccounts.userId, { onDelete: "cascade" }),
   kind: text("kind").notNull(), data: text("data").notNull(), profileRevision: integer("profile_revision").notNull(), resumeId: text("resume_id"), jobId: text("job_id"), createdAt: text("created_at").notNull(),
 });
+
+// All agent records are private owner-scoped. Audit/history updates are denied
+// by migration triggers; deletion is reserved for approved privacy cleanup.
+export const agentSettings = sqliteTable("career_agent_settings", {
+  userId: text("user_id").primaryKey().references(() => careerAccounts.userId, { onDelete: "cascade" }),
+  mode: text("mode").notNull().default("approval"), pausedAll: integer("paused_all").notNull().default(0), pausedCategories: text("paused_categories").notNull().default("[]"),
+  revision: integer("revision").notNull().default(0), vaultRevision: integer("vault_revision").notNull().default(0), answersRevision: integer("answers_revision").notNull().default(0), feedbackRevision: integer("feedback_revision").notNull().default(0),
+  maxJobsPerRun: integer("max_jobs_per_run").notNull().default(10), maxPackagesPerRun: integer("max_packages_per_run").notNull().default(3),
+  schedule: text("schedule").notNull().default('{"enabled":false,"timeZone":"Asia/Kolkata","runTime":"07:30"}'), createdAt: text("created_at").notNull(), updatedAt: text("updated_at").notNull(),
+});
+export const savedSearches = sqliteTable("career_saved_searches", {
+  id: text("id").primaryKey(), userId: text("user_id").notNull().references(() => careerAccounts.userId, { onDelete: "cascade" }),
+  label: text("label").notNull(), goal: text("goal").notNull().default(""), preferences: text("preferences").notNull(), enabled: integer("enabled").notNull().default(1), revision: integer("revision").notNull().default(0), createdAt: text("created_at").notNull(), updatedAt: text("updated_at").notNull(),
+}, t => [index("saved_search_owner").on(t.userId)]);
+export const vaultFacts = sqliteTable("career_vault_facts", {
+  id: text("id").primaryKey(), userId: text("user_id").notNull().references(() => careerAccounts.userId, { onDelete: "cascade" }), key: text("key").notNull(), label: text("label").notNull(), value: text("value"), classification: text("classification").notNull(), source: text("source").notNull(), revision: integer("revision").notNull().default(0), confirmedAt: text("confirmed_at"), createdAt: text("created_at").notNull(), updatedAt: text("updated_at").notNull(),
+}, t => [uniqueIndex("vault_owner_key").on(t.userId, t.key)]);
+export const vaultHistory = sqliteTable("career_vault_history", {
+  id: text("id").primaryKey(), userId: text("user_id").notNull().references(() => careerAccounts.userId, { onDelete: "cascade" }), key: text("key").notNull(), data: text("data").notNull(), createdAt: text("created_at").notNull(),
+}, t => [index("vault_history_owner").on(t.userId)]);
+export const confirmedAnswers = sqliteTable("career_confirmed_answers", {
+  id: text("id").primaryKey(), userId: text("user_id").notNull().references(() => careerAccounts.userId, { onDelete: "cascade" }), key: text("key").notNull(), question: text("question").notNull(), value: text("value").notNull(), revision: integer("revision").notNull().default(0), confirmedAt: text("confirmed_at").notNull(), createdAt: text("created_at").notNull(), updatedAt: text("updated_at").notNull(),
+}, t => [uniqueIndex("answer_owner_key").on(t.userId, t.key)]);
+export const answerHistory = sqliteTable("career_answer_history", {
+  id: text("id").primaryKey(), userId: text("user_id").notNull().references(() => careerAccounts.userId, { onDelete: "cascade" }), key: text("key").notNull(), data: text("data").notNull(), createdAt: text("created_at").notNull(),
+});
+export const agentFeedback = sqliteTable("career_agent_feedback", {
+  id: text("id").primaryKey(), userId: text("user_id").notNull().references(() => careerAccounts.userId, { onDelete: "cascade" }), jobId: text("job_id"), reason: text("reason").notNull(), details: text("details").notNull(), createdAt: text("created_at").notNull(),
+});
+export const agentRuns = sqliteTable("career_agent_runs", {
+  id: text("id").primaryKey(), userId: text("user_id").notNull().references(() => careerAccounts.userId, { onDelete: "cascade" }), idempotencyKey: text("idempotency_key").notNull(), searchId: text("search_id"), goal: text("goal").notNull(), status: text("status").notNull(), settingsRevision: integer("settings_revision").notNull(), context: text("context").notNull(), contextHash: text("context_hash").notNull(), leaseToken: text("lease_token"), leaseUntil: text("lease_until"), summary: text("summary").notNull().default(""), createdAt: text("created_at").notNull(), updatedAt: text("updated_at").notNull(),
+}, t => [uniqueIndex("agent_run_owner_idempotency").on(t.userId, t.idempotencyKey), index("agent_run_owner").on(t.userId)]);
+export const agentTasks = sqliteTable("career_agent_tasks", {
+  id: text("id").primaryKey(), userId: text("user_id").notNull().references(() => careerAccounts.userId, { onDelete: "cascade" }), runId: text("run_id").notNull().references(() => agentRuns.id, { onDelete: "cascade" }), agentId: text("agent_id").notNull(), category: text("category").notNull(), taskKey: text("task_key").notNull(), status: text("status").notNull(), input: text("input").notNull(), output: text("output"), summary: text("summary").notNull().default(""), createdAt: text("created_at").notNull(), updatedAt: text("updated_at").notNull(),
+}, t => [uniqueIndex("agent_task_owner_run_key").on(t.userId, t.runId, t.taskKey)]);
+export const agentActivity = sqliteTable("career_agent_activity", {
+  id: text("id").primaryKey(), userId: text("user_id").notNull().references(() => careerAccounts.userId, { onDelete: "cascade" }), agentId: text("agent_id").notNull(), action: text("action").notNull(), status: text("status").notNull(), summary: text("summary").notNull(), runId: text("run_id"), entityId: text("entity_id"), manifest: text("manifest").notNull(), manifestHash: text("manifest_hash").notNull(), createdAt: text("created_at").notNull(),
+}, t => [index("agent_activity_owner").on(t.userId)]);
+export const applicationPackages = sqliteTable("career_application_packages", {
+  id: text("id").primaryKey(), userId: text("user_id").notNull().references(() => careerAccounts.userId, { onDelete: "cascade" }), label: text("label").notNull(), jobId: text("job_id").notNull(), resumeId: text("resume_id"), coverId: text("cover_id"), searchId: text("search_id"), input: text("input").notNull(), status: text("status").notNull(), revision: integer("revision").notNull().default(0), snapshot: text("snapshot").notNull(), snapshotHash: text("snapshot_hash").notNull(), unknowns: text("unknowns").notNull(), createdAt: text("created_at").notNull(), updatedAt: text("updated_at").notNull(),
+}, t => [index("package_owner").on(t.userId)]);
+export const packageApprovals = sqliteTable("career_package_approvals", {
+  id: text("id").primaryKey(), userId: text("user_id").notNull().references(() => careerAccounts.userId, { onDelete: "cascade" }), packageId: text("package_id").notNull().references(() => applicationPackages.id, { onDelete: "cascade" }), snapshotHash: text("snapshot_hash").notNull(), packageRevision: integer("package_revision").notNull(), settingsRevision: integer("settings_revision").notNull(), status: text("status").notNull(), expiresAt: text("expires_at").notNull(), consumedAt: text("consumed_at"), createdAt: text("created_at").notNull(),
+}, t => [index("approval_owner_package").on(t.userId, t.packageId)]);
+export const packageHistory = sqliteTable("career_package_history", {
+  id: text("id").primaryKey(), userId: text("user_id").notNull().references(() => careerAccounts.userId, { onDelete: "cascade" }), packageId: text("package_id").notNull().references(() => applicationPackages.id, { onDelete: "cascade" }), revision: integer("revision").notNull(), snapshot: text("snapshot").notNull(), snapshotHash: text("snapshot_hash").notNull(), unknowns: text("unknowns").notNull(), createdAt: text("created_at").notNull(),
+}, t => [uniqueIndex("package_history_owner_revision").on(t.userId, t.packageId, t.revision)]);

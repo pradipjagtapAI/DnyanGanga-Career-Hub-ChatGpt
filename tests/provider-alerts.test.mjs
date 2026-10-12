@@ -11,13 +11,17 @@ import { CareerError, defaultNotifications, defaultPreferences, defaultProfile }
 const coreUrl = new URL("../lib/career-core.ts", import.meta.url).href;
 async function moduleUrl(path, replacements = {}) {
   let source = await readFile(new URL(path, import.meta.url), "utf8");
-  for (const [from, to] of Object.entries(replacements)) source = from === "resend" ? source.replace('from "resend"', `from ${JSON.stringify(to)}`) : source.replaceAll(JSON.stringify(from), JSON.stringify(to));
+  for (const [from, to] of Object.entries(replacements)) source = from === "resend" ? source.replace('from "resend"', `from ${JSON.stringify(to)}`) : source.replaceAll(JSON.stringify(from), JSON.stringify(to)).replaceAll(`'${from}'`, JSON.stringify(to));
   const compiled = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ES2022 } }).outputText;
   return `data:text/javascript;base64,${Buffer.from(compiled).toString("base64")}`;
 }
 const providersUrl = await moduleUrl("../lib/career-providers.ts", { "./career-core": coreUrl });
 const providers = await import(providersUrl);
-const alerts = await import(await moduleUrl("../lib/career-alerts.ts", { "./career-core": coreUrl, "./career-providers": providersUrl, resend: import.meta.resolve("resend") }));
+const careerUrl = await moduleUrl("../lib/career-store.ts", { "./career-core": coreUrl });
+const contractUrl = await moduleUrl("../lib/career-agent-contract.ts", { "./career-core": coreUrl });
+const agentStoreUrl = await moduleUrl("../lib/career-agent-store.ts", { "./career-core": coreUrl, "./career-agent-contract": contractUrl });
+const matchingUrl = await moduleUrl("../lib/career-agent-matching.ts", { "./career-core": coreUrl });
+const alerts = await import(await moduleUrl("../lib/career-alerts.ts", { "./career-core": coreUrl, "./career-providers": providersUrl, "./career-store": careerUrl, "./career-agent-store": agentStoreUrl, "./career-agent-matching": matchingUrl, resend: import.meta.resolve("resend") }));
 const worker = await import(await moduleUrl("../worker/scheduler.ts"));
 const { CareerStore } = await import(await moduleUrl("../lib/career-store.ts", { "./career-core": coreUrl }));
 const migrationFiles = (await readdir(new URL("../drizzle/", import.meta.url))).filter((name) => name.endsWith(".sql")).sort();
@@ -293,4 +297,11 @@ test("official idempotency conflicts stay uncertain rather than freeing already-
   const db = await workspace(); const feeds = await feedsAndJobs(db); const queued = queue(db);
   await alerts.processDispatch(db, queued, env, { now: () => now, freshFeeds: feeds, sendEmail: async () => { throw error; } });
   assert.equal(db.db.prepare("SELECT status FROM career_alert_dispatches WHERE id=?").get(queued.id).status, "uncertain"); assert.equal(db.db.prepare("SELECT status FROM career_alert_job_dedupe WHERE dispatch_id=?").get(queued.id).status, "uncertain");
+});
+
+test("job-feed final policy hook blocks network calls when permissions change", async () => {
+  let calls = 0;
+  const env = { CAREER_JOBS_ENABLED: "true", GREENHOUSE_BOARDS_JSON: JSON.stringify([{ board: "synthetic", company: "Synthetic", rightsConfigId: "synthetic-rights", displayAllowed: true, digestAllowed: true, aiAllowed: false }]) };
+  const feeds = await providers.fetchGreenhouseJobs(env, async () => { calls++; throw Error("unexpected"); }, new Date(), async destination => { assert.match(destination, /^https:\/\/boards-api\.greenhouse\.io\//); throw new CareerError(409, "AGENTS_PAUSED", "Paused"); });
+  assert.equal(calls, 0); assert.equal(feeds[0].errorCode, "AGENTS_PAUSED"); assert.deepEqual(feeds[0].jobs, []);
 });

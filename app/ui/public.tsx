@@ -380,6 +380,10 @@ export const publicPages: Record<
       "Build a professional foundation, keep your search organized and prepare for the conversations that matter.",
     sections: [
       {
+        title: "AI Agent Command Center",
+        text: "Coordinate saved searches, matching, document drafts and application reviews through a central career orchestrator and 17 specialist agents. Choose Assist, Approval or Agentic mode, inspect real activity, and pause all agents or individual workflows. Approval is the default. Unsupported application sites remain a manual handoff.",
+      },
+      {
         title: "Profile & career goals",
         text: "Keep confirmed experience, education, skills and career preferences together. Select multiple cities and decide which location and work arrangement preferences are mandatory.",
       },
@@ -504,7 +508,7 @@ export const publicPages: Record<
     sections: [
       {
         title: "What the working build stores",
-        text: "Your signed-in identity, confirmed profile, preferences, resume versions, job records, applications, tasks, private practice sessions, assistant history and alert settings are stored in the Site database. Configured uploads use private document storage. The public demo runs in memory and resets when you leave.",
+        text: "Your signed-in identity, confirmed profile, preferences, resume versions, job records, applications, private practice sessions and alert settings are stored in the Site database. Agent settings, confirmed and inferred facts, answers, saved searches, workflow history, application snapshots and protected action manifests are also private records. Configured uploads use private document storage. The public demo runs in memory and resets when you leave.",
       },
       {
         title: "Access and sharing",

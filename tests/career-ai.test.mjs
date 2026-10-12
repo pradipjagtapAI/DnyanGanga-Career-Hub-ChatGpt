@@ -264,3 +264,23 @@ test("a newly saved revision-zero session can continue and negative revisions ar
   assert.equal(request.expectedRevision, 0);
   assert.throws(() => validateAIRequest({ mode: "coach", sessionId: "owned-session", expectedRevision: -1 }), code("INVALID_REVISION"));
 });
+
+test("a pause after quota reservation blocks AI before the provider is contacted", async () => {
+  const budget = new Budget(); let calls = 0;
+  await assert.rejects(() => generateCareerAI({ mode: "coach", context: context() }, env, budget,
+    { generate: async () => { calls++; return { output: output(), totalTokens: 1 }; } },
+    async body => { assert.ok(budget.active); assert.equal(body.tools.length, 0); throw new CareerError(409, "AGENTS_PAUSED", "Paused"); }), code("AGENTS_PAUSED"));
+  assert.equal(calls, 0); assert.equal(budget.settlements.length, 1); assert.equal(budget.active, false);
+});
+
+test("external policy receives minimized AI request without the service secret", async () => {
+  let manifest; const c = context();
+  await generateCareerAI({ mode: "coach", context: c }, env, new Budget(), adapter(output(c)), async body => { manifest = body; });
+  assert.ok(manifest); assert.equal(JSON.stringify(manifest).includes(env.OPENAI_API_KEY), false);
+  assert.equal(JSON.stringify(manifest).includes("private@example.test"), false);
+});
+
+test("AI context masks document contacts that differ from the saved profile", () => {
+  const c = context({ activeResume: { id: "owned-resume", version: 2, text: "Phone: 9988776655\nWhatsApp: +44 7700 900123\nConfirmed CAD experience" } });
+  const serialized=JSON.stringify(c.facts); assert.equal(serialized.includes("9988776655"),false); assert.equal(serialized.includes("900123"),false); assert.match(serialized,/Confirmed CAD experience/);
+});

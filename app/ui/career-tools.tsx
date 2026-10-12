@@ -105,7 +105,11 @@ export function MatchExplanation({ job }: {job:CareerJob}) {
   const evidence = job.skillEvidence || [];
   return (
     <section className="match-explanation">
-      <h3>Why this role may suit you</h3>
+      <h3>Why it matches</h3>
+      {job.verification?.duplicateOf ? <p className="tool-message">This listing shares an application destination with another saved listing and is excluded from duplicate preparation.</p> : null}
+      {job.verification?.warnings.length ? <div className="tool-message" role="status"><b>Listing details to review</b><ul>{job.verification.warnings.map(warning=><li key={warning}>{warning}</li>)}</ul></div> : null}
+      {job.memoryAdjustment?.points ? <p>{job.memoryAdjustment.reason}</p> : null}
+      {job.whyMatches?.length ? <ul>{job.whyMatches.map(reason => <li key={reason}>{reason}</li>)}</ul> : null}
       <p>
         {relevance.explanation ||
           job.explanation ||
@@ -125,10 +129,10 @@ export function MatchExplanation({ job }: {job:CareerJob}) {
           </ul>
         </div>
         <div>
-          <h4>Needs attention</h4>
+          <h4>Possible gaps</h4>
           <ul>
-            {(job.missingSkills || []).length ? (
-              (job.missingSkills||[]).map((s: string) => <li key={s}>{s}</li>)
+            {(job.possibleGaps || job.missingSkills || []).length ? (
+              (job.possibleGaps || job.missingSkills || []).map((s: string) => <li key={s}>{s}</li>)
             ) : (
               <li>Check responsibilities and essential requirements.</li>
             )}
@@ -160,10 +164,10 @@ export function MatchExplanation({ job }: {job:CareerJob}) {
           <b>Salary comparison:</b> {job.salaryComparison.reason}
         </p>
       )}
-      {job.reviewEvidence?.length? <><h4>Domain and essential requirements to review</h4><ul>{job.reviewEvidence.map((item,i)=><li key={i}><b>{item.category}: {item.requested}</b><br/>{Array.isArray(item.evidence)?item.evidence.join(" · "):item.evidence} · {item.status}</li>)}</ul><p>These requirements need your review and do not earn automatic score points.</p></>:null}<h4>Uncertain information</h4>
+      {job.reviewEvidence?.length? <><h4>Domain and essential requirements to review</h4><ul>{job.reviewEvidence.map((item,i)=><li key={i}><b>{item.category}: {item.requested}</b><br/>{Array.isArray(item.evidence)?item.evidence.join(" · "):item.evidence} · {item.status}</li>)}</ul><p>These requirements need your review and do not earn automatic score points.</p></>:null}<h4>Unknown information</h4>
       <ul>
         {(
-          job.uncertainties ||
+          job.unknownInformation || job.uncertainties ||
           relevance.uncertainty ||
           relevance.uncertainties || [
             "Employer requirements and hiring decisions need independent review.",
@@ -184,7 +188,7 @@ export function MatchExplanation({ job }: {job:CareerJob}) {
           estimate describes profile fit; it is not a probability of being
           hired.
         </p>
-        {relevance.components && (
+        {job.factors?.length ? <><p>Evidence coverage: {job.coverage}% of the weighted factors could be assessed.</p><ul>{job.factors.map(factor => <li key={factor.name}><b>{factor.name}: {factor.points}/{factor.weight}</b> · {factor.status}<br/>{factor.evidence}</li>)}</ul></> : relevance.components && (
           <pre>{JSON.stringify(relevance.components, null, 2)}</pre>
         )}
       </details>

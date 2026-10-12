@@ -6,6 +6,8 @@ This update extends the existing website, source repository, private Sites URL, 
 
 The current release is a **private review build**. Core account workflows work with real database records. External AI, live job feeds, document processing, email and WhatsApp have implemented server adapters but remain disabled until their required access, infrastructure and acceptance checks are complete. No provider key, job permission, real message, payment or production performance result is implied.
 
+The agentic update adds the **AI Agent Command Center** at `/dashboard?view=agents`. It coordinates 17 specialists through durable plans, a private confirmed-fact vault, independent saved searches, current pause controls and exact expiring application approvals. Approval mode is the default. Read [agentic handover](docs/agentic-handover.md) and [actual agentic test evidence](docs/agentic-test-results.md) for behavior, setup and limits.
+
 ## What works and what needs setup
 
 | Area | Working in this update | Remaining setup or limit |
@@ -43,6 +45,7 @@ flowchart LR
 | `/contact`, `/pricing`, `/privacy`, `/terms`, `/security` | Support, unconfigured plans, policies and status |
 | `/demo` | Labelled fictional preview |
 | `/dashboard` | Profile completion, current resume, matches, progress, interviews and delivery status |
+| `/dashboard?view=agents` | AI Agent Command Center, knowledge vault, saved searches and application reviews |
 | `/dashboard?view=profile` | My Profile |
 | `/dashboard?view=resumes` | My Resumes, editor and upload status |
 | `/dashboard?view=jobs`, `?view=saved` | Job Matches and Saved Jobs |
@@ -96,13 +99,13 @@ node scripts/install-ci.mjs
 node scripts/run-framework.mjs build
 ```
 
-Build produces `dist/server/wrangler.json`. A new local database needs migrations 0000, 0001, 0002 and 0003 **once, in order**. An existing database needs only its pending migrations; never replay one. For each pending file use:
+Build produces `dist/server/wrangler.json`. A new local database needs migrations 0000, 0001, 0002, 0003, 0004 and 0005 **once, in order**. An existing database needs only its pending migrations; never replay one. For each pending file use:
 
 ```powershell
 node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0001_flippant_talisman.sql
 ```
 
-Substitute the exact pending filename: `0000_odd_reptil.sql`, `0001_flippant_talisman.sql`, `0002_clean_whiplash.sql`, `0003_smiling_nightmare.sql`. The updates add document/session/usage/provider/verification/dispatch tables and columns; they do not drop existing tables or replace accounts. Database schema/journal must stay together. Hosted Sites applies pending generated migrations through its release flow; a local command does not migrate hosted data.
+Substitute the exact pending filename: `0000_odd_reptil.sql`, `0001_flippant_talisman.sql`, `0002_clean_whiplash.sql`, `0003_smiling_nightmare.sql`, `0004_big_mephisto.sql`, `0005_strange_paladin.sql`. The updates add document/session/usage/provider/verification/dispatch tables and columns; they do not drop existing tables or replace accounts. Database schema/journal must stay together. Hosted Sites applies pending generated migrations through its release flow; a local command does not migrate hosted data.
 
 ```powershell
 npm run dev
@@ -117,6 +120,7 @@ npm test
 node node_modules/typescript/bin/tsc --noEmit --incremental false
 node tests/http-smoke.mjs
 npm run test:browser
+npm run test:agents:browser
 npm run build
 npm start
 ```

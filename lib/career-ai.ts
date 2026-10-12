@@ -14,11 +14,11 @@ export type CareerAIEnv = {
 };
 export type AIFact = { id: string; kind: "candidate" | "goal" | "job" | "response"; label: string; text: string };
 export type AIContext = {
-  facts: AIFact[]; warnings: string[]; profileRevision: number;
+  facts: AIFact[]; warnings: string[]; profileRevision: number; vaultRevision?: number;
   resumeId: string | null; resumeVersion: number | null; jobId: string | null;
 };
 export type AIContextInput = {
-  profile: Profile; preferences: Preferences; profileRevision: number;
+  profile: Profile; preferences: Preferences; profileRevision: number; vaultRevision?: number;
   activeResume: { id: string; version: number; text: string } | null;
   job: (ManualJob & { id: string; source?: string; lastCheckedAt?: string }) | null;
 };
@@ -47,7 +47,7 @@ export type AIResult = {
   suggestions: { text: string; factIds: string[] }[];
   documentText: string | null; documentFactIds: string[]; questions: AIQuestion[];
   feedback: AIFeedback | null; nextSteps: string[]; warnings: string[];
-  context: Pick<AIContext, "profileRevision" | "resumeId" | "resumeVersion" | "jobId">;
+  context: Pick<AIContext, "profileRevision" | "vaultRevision" | "resumeId" | "resumeVersion" | "jobId">;
   usage: { requestId: string; reservedTokens: number; actualTokens: number } | null;
 };
 export type AIClientRequest = {
@@ -127,6 +127,10 @@ export function buildAIContext(input: AIContextInput): AIContext {
     let text = value.trim();
     for (const contact of contactValues) text = text.split(contact).join("[private contact omitted]");
     text = text.replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "[private contact omitted]");
+    // A document may contain contact numbers different from the account profile.
+    // Mask explicit contact lines and international phone syntax before sending.
+    text = text.replace(/^(?:phone|mobile|telephone|tel|whatsapp)\s*[:=\-]\s*[+()\d .\-]{7,40}$/i, "[private contact omitted]");
+    text = text.replace(/\+[1-9]\d(?:[\d .()\-]{6,20})\d/g, "[private contact omitted]");
     if (text === "[private contact omitted]") return;
     if (text.length > 2000 || chars + text.length > 16_000 || facts.length >= 80) {
       if (!warnings.includes("Some long context was omitted. Review the complete source documents before using suggestions.")) warnings.push("Some long context was omitted. Review the complete source documents before using suggestions.");
@@ -169,7 +173,7 @@ export function buildAIContext(input: AIContextInput): AIContext {
 
   // Account email/phone/WhatsApp/name/location/portfolio are not copied into AI context.
   return {
-    facts, warnings, profileRevision: input.profileRevision,
+    facts, warnings, profileRevision: input.profileRevision, ...(input.vaultRevision===undefined?{}:{vaultRevision:input.vaultRevision}),
     resumeId: input.activeResume?.id ?? null, resumeVersion: input.activeResume?.version ?? null, jobId: input.job?.id ?? null,
   };
 }
@@ -265,7 +269,7 @@ export function validateAIOutput(value: unknown, mode: CareerAIMode, context: AI
   return { reply: outputString(o.reply, 6000, true), evidence, suggestions, documentFactIds, questions, feedback, nextSteps: outputArray(o.nextSteps, 8, (item) => outputString(item, 500, true)) };
 }
 function metadata(context: AIContext): AIResult["context"] {
-  return { profileRevision: context.profileRevision, resumeId: context.resumeId, resumeVersion: context.resumeVersion, jobId: context.jobId };
+  return { profileRevision: context.profileRevision, resumeId: context.resumeId, resumeVersion: context.resumeVersion, jobId: context.jobId, ...(context.vaultRevision===undefined?{}:{vaultRevision:context.vaultRevision}) };
 }
 function renderDocument(mode: CareerAIMode, ids: string[], context: AIContext): string | null {
   if (mode !== "resume" && mode !== "coverletter") return null;
@@ -399,7 +403,7 @@ export const openAIResponsesProvider: CareerAIProvider = {
  * Provider injection supports replacement and offline verification; production callers
  * should use the default adapter. Durable reserve/settle must be owner-bound.
  */
-export async function generateCareerAI(input: AIInput, env: CareerAIEnv, budget: AIBudget, provider: CareerAIProvider = openAIResponsesProvider): Promise<AIResult> {
+export async function generateCareerAI(input: AIInput, env: CareerAIEnv, budget: AIBudget, provider: CareerAIProvider = openAIResponsesProvider, beforeExternal?: (body: Record<string, unknown>) => Promise<void>): Promise<AIResult> {
   const safe = validateInput(input);
   const config = configFrom(env);
   if (!config) return selfReviewCareer(input);
@@ -421,6 +425,10 @@ export async function generateCareerAI(input: AIInput, env: CareerAIEnv, budget:
   const timer = setTimeout(() => controller.abort(), config.timeoutMs);
   let outcome: AIUsageOutcome = "provider_failure"; let actualTokens: number | null = null;
   try {
+    // Re-read current permissions after any awaited quota work, directly before
+    // handing the minimized request to an external provider. An audit failure
+    // or pause fails closed and the reserved allowance remains accounted for.
+    await beforeExternal?.(body);
     const response = await provider.generate(body, config, controller.signal);
     if (controller.signal.aborted) { outcome = "timeout"; throw new CareerError(504, "AI_TIMEOUT", "AI processing took too long. Your confirmed data was not changed."); }
     const reportedTokens = response.totalTokens;

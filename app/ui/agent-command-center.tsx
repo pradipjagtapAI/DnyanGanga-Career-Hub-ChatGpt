@@ -1,0 +1,271 @@
+"use client";
+
+import React, { useEffect, useRef, useState } from "react";
+import {
+  Activity, ArrowUpRight, Bell, BookOpenCheck, Check, CheckCircle2,
+  ChevronRight, Download, FileCheck2, FileText, History,
+  Layers3, ListChecks, Pause, Play, Plus, RefreshCw, Search,
+  Settings2, ShieldCheck, Sparkles, Trash2, UserRound, X,
+} from "lucide-react";
+import type { AgentCommandState } from "../../lib/career-agent-contract";
+import type { ViewState } from "./career-view-types";
+
+type Row = Record<string, unknown>;
+type Action = (path: string, method: string, body: unknown, message: string) => Promise<boolean>;
+type Props = { state?: AgentCommandState | null; onState: (state: ViewState) => void | Promise<void>; demo: boolean };
+type Tab = "overview" | "review" | "searches" | "vault" | "history" | "settings";
+const tabs: { id: Tab; label: string; icon: typeof Activity }[] = [
+  { id: "overview", label: "Your agents", icon: Layers3 },
+  { id: "review", label: "Review pending actions", icon: FileCheck2 },
+  { id: "searches", label: "Saved searches", icon: Search },
+  { id: "vault", label: "Career facts & answers", icon: BookOpenCheck },
+  { id: "history", label: "Activity history", icon: History },
+  { id: "settings", label: "Automation settings", icon: Settings2 },
+];
+const pauseOptions = [
+  ["jobs", "Job discovery"], ["notifications", "Notifications"],
+  ["documents", "Document preparation"], ["applications", "Applications"],
+  ["communications", "Communications"],
+] as const;
+function object(value: unknown): Row { return value && typeof value === "object" && !Array.isArray(value) ? value as Row : {}; }
+function rows(value: unknown): Row[] { return Array.isArray(value) ? value.map(object) : []; }
+function text(value: unknown, fallback = ""): string { return typeof value === "string" ? value : typeof value === "number" ? String(value) : fallback; }
+function strings(value: unknown): string[] { return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : []; }
+function count(value: unknown): string { return typeof value === "number" && Number.isFinite(value) && value >= 0 ? String(value) : "—"; }
+function label(value: unknown): string { return text(value, "Not recorded").replace(/[_-]/g, " ").replace(/([a-z])([A-Z])/g, "$1 $2"); }
+function date(value: unknown, timeZone = "Asia/Kolkata"): string {
+  if (typeof value !== "string" || !value) return "Not recorded";
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? "Not recorded" : new Intl.DateTimeFormat("en-IN", { dateStyle: "medium", timeStyle: "short", timeZone }).format(parsed);
+}
+function safeLink(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  try { const url = new URL(value); return url.protocol === "https:" && !url.username && !url.password ? url.href : null; } catch { return null; }
+}
+function errorMessage(error: unknown) { return error instanceof Error ? error.message : "This change could not be completed. Try again."; }
+function Badge({ value }: { value: unknown }) {
+  const status = text(value, "Not recorded");
+  const tone = /fail|block|needs.input|unknown|attention|cancel|expired|stale|invalidated/i.test(status) ? "warning" : /complete|ready|approved|verified|success/i.test(status) ? "success" : /running|queued|review|approval/i.test(status) ? "active" : "neutral";
+  return <span className={"acc-badge " + tone}>{label(status)}</span>;
+}
+function Empty({ title, children }: { title: string; children: React.ReactNode }) {
+  return <div className="acc-empty"><Layers3 size={26} aria-hidden="true" /><h3>{title}</h3><p>{children}</p></div>;
+}
+function CheckField({ children, checked, onChange, disabled = false }: { children: React.ReactNode; checked: boolean; onChange: (value: boolean) => void; disabled?: boolean }) {
+  return <label className="acc-check"><input type="checkbox" checked={checked} disabled={disabled} onChange={(event) => onChange(event.target.checked)} /><span>{children}</span></label>;
+}
+function Field({ label: title, children, hint }: { label: string; children: React.ReactNode; hint?: string }) {
+  const id = React.useId(); const hintId = id + "-hint"; const labelId = id + "-label";
+  function associate(node: React.ReactNode): React.ReactNode {
+    return React.Children.map(node, child => {
+      if (!React.isValidElement(child)) return child;
+      if (child.type === React.Fragment) return React.cloneElement(child as React.ReactElement<{ children?: React.ReactNode }>, {}, associate((child.props as { children?: React.ReactNode }).children));
+      if (["input", "textarea", "select"].includes(String(child.type))) return React.cloneElement(child as React.ReactElement<{ "aria-labelledby"?: string; "aria-describedby"?: string }>, { "aria-labelledby": labelId, "aria-describedby": hint ? hintId : undefined });
+      return child;
+    });
+  }
+  const control = associate(children);
+  return <label className="acc-field"><span id={labelId}>{title}</span>{control}{hint && <small id={hintId}>{hint}</small>}</label>;
+}
+function Detail({ title, value }: { title: string; value: unknown }) {
+  return <div><dt>{title}</dt><dd>{text(value, "Not provided") || "Not provided"}</dd></div>;
+}
+function AgentCard({ agent }: { agent: Row }) {
+  const last = agent.lastActivityAt ?? agent.lastRunAt;
+  const recordedTask = text(agent.currentTask); const registryId = text(agent.id);
+  const currentTask = recordedTask === registryId || (registryId && recordedTask.startsWith(registryId + ":")) ? text(agent.description, text(agent.name, "Career preparation")) : recordedTask;
+  return <article className="acc-agent-card"><div className="acc-agent-heading"><span className="acc-agent-icon"><Sparkles size={18} /></span><Badge value={agent.status} /></div><h3>{text(agent.name, "Career agent")}</h3><p className="acc-agent-task">{currentTask || text(agent.reason, "No current task recorded.")}</p><dl className="acc-agent-facts"><Detail title="Last activity" value={last ? date(last) : "No activity yet"} /><Detail title="Next run" value={agent.nextRunAt ? date(agent.nextRunAt) : "When a permitted workflow runs"} /></dl><div className="acc-agent-counts"><span><b>{count(agent.completedTasks)}</b> completed</span><span><b>{count(agent.pendingTasks)}</b> pending</span><span><b>{count(agent.failedTasks ?? agent.failures)}</b> failed</span></div></article>;
+}
+
+export function AgentCommandCenter({ state, onState, demo }: Props) {
+  const data = object(state);
+  const settings = object(data.settings);
+  const agents = rows(data.agents);
+  const runs = rows(data.runs);
+  const packages = rows(data.packages);
+  const searches = rows(data.savedSearches);
+  const vault = rows(data.vault);
+  const answers = rows(data.confirmedAnswers);
+  const activity = rows(data.activity);
+  const [tab, setTab] = useState<Tab>("overview");
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+  const [failure, setFailure] = useState(false);
+  const busyLock = useRef(false);
+  const [pollError, setPollError] = useState("");
+  const [editingSearch, setEditingSearch] = useState<Row | null | undefined>(undefined);
+  const [selectedSearch, setSelectedSearch] = useState("");
+  const orchestrator = agents.find((agent) => /orchestrator/i.test(text(agent.id) + text(agent.name))) ?? object(data.orchestrator);
+  const specialists = agents.filter((agent) => !/orchestrator/i.test(text(agent.id) + text(agent.name)));
+  const active = runs.some((run) => /^(running|queued|processing)$/i.test(text(run.status)));
+  const paused = settings.pausedAll === true;
+  const pending = packages.filter((item) => !/^(executed|rejected|cancelled|archived|submitted)$/i.test(text(item.status)));
+  const attention = rows(data.attention);
+  const completedSteps = specialists.length > 0 && specialists.every(agent => typeof agent.completedTasks === "number") ? specialists.reduce((total, agent) => total + Number(agent.completedTasks), 0) : undefined;
+
+  async function refresh(signal?: AbortSignal) {
+    const response = await fetch("/api/career/state", { cache: "no-store", signal });
+    if (!response.ok) throw new Error("Your workspace could not be refreshed.");
+    await onState(await response.json() as ViewState);
+  }
+  useEffect(() => {
+    if (!active || paused || demo) return;
+    const controller = new AbortController();
+    let pendingRequest = false;
+    const timer = setInterval(async () => {
+      if (pendingRequest) return;
+      pendingRequest = true;
+      try {
+        const response = await fetch("/api/career/state", { cache: "no-store", signal: controller.signal });
+        if (!response.ok) throw new Error("Live activity could not be refreshed."); await onState(await response.json() as ViewState); setPollError("");
+      } catch { if (!controller.signal.aborted) setPollError("Live activity could not be refreshed. Showing the last confirmed records; use Refresh to retry."); }
+      finally { pendingRequest = false; }
+    }, 4000);
+    return () => { clearInterval(timer); controller.abort(); };
+  }, [active, paused, demo, onState]);
+
+  const action: Action = async (path, method, body, success) => {
+    if (demo) { setMessage("Sign in to save agent settings or run a private workflow. This demonstration does not create activity."); setFailure(false); return false; }
+    if (busyLock.current) return false; busyLock.current = true;
+    setBusy(true); setMessage(""); setFailure(false);
+    try {
+      const response = await fetch("/api/career/agents/" + path, { method, cache: "no-store", headers: { "Content-Type": "application/json", "X-Career-Action": "1" }, body: JSON.stringify(body ?? {}) });
+      const result = object(await response.json());
+      if (!response.ok || result.ok === false) throw new Error(text(result.error, "This action could not be completed."));
+      if (result.state) await onState(result.state as ViewState); else await refresh();
+      setMessage(success); return true;
+    } catch (error) { setFailure(true); setMessage(errorMessage(error)); return false; }
+    finally { busyLock.current = false; setBusy(false); }
+  };
+  async function setPaused(pausedAll: boolean) {
+    await action("settings", "PUT", { mode: text(settings.mode, "approval"), pausedAll, pausedCategories: strings(settings.pausedCategories), expectedRevision: settings.revision, maxJobsPerRun: settings.maxJobsPerRun, maxPackagesPerRun: settings.maxPackagesPerRun, schedule: { enabled: object(settings.schedule).enabled === true, timeZone: text(object(settings.schedule).timeZone, "Asia/Kolkata"), runTime: "07:30" } }, pausedAll ? "Agents paused. Work already accepted by an external service cannot be recalled." : "Permitted agents resumed. External actions still follow your approval policy.");
+  }
+
+  return <section className="acc" aria-label="Career agent command center" aria-busy={busy}>
+    <div className="acc-title-row"><div><span className="acc-eyebrow">YOUR CAREER, WITH YOU IN CONTROL</span><h1>Career command center</h1><p>One clear view of your agents, next steps and decisions.</p></div><div className="acc-actions"><button className="btn outline" disabled={busy || demo || !state} onClick={() => setPaused(true)}><Pause size={16} />Pause all</button><button className="btn primary" disabled={busy || demo || !state} onClick={() => setPaused(false)}><Play size={16} />Resume agents</button><button className="acc-icon-button" aria-label="Refresh agent activity" disabled={busy || demo} onClick={async () => { if (busyLock.current) return; busyLock.current = true; setBusy(true); try { await refresh(); setFailure(false); setMessage("Agent activity refreshed."); } catch (error) { setFailure(true); setMessage(errorMessage(error)); } finally { busyLock.current = false; setBusy(false); } }}><RefreshCw size={17} /></button></div></div>
+    {message && <div className={"acc-message " + (failure ? "error" : "")} role={failure ? "alert" : "status"}>{failure ? <ShieldCheck size={18} /> : <CheckCircle2 size={18} />}<span>{message}</span></div>}
+    {pollError && <div className="acc-message error" role="status"><RefreshCw size={17} /><span>{pollError}</span></div>}
+    {demo && <div className="acc-note"><ShieldCheck size={18} /><p>Agent records are private account features. This demonstration shows the interface without inventing runs, outcomes or submissions.</p></div>}
+    <div className="acc-orchestrator"><div className="acc-orchestrator-top"><div className="acc-orchestrator-icon"><Layers3 size={25} /></div><div><span className="acc-eyebrow">YOUR WORKFLOW COORDINATOR</span><h2>{text(orchestrator.name, "Career Orchestrator Agent")}</h2></div><Badge value={paused ? "Paused" : orchestrator.status} /></div><p>{text(orchestrator.currentTask ?? orchestrator.reason, "Choose a saved search to start a permitted workflow. No agent task has been recorded yet.")}</p><div className="acc-orchestrator-bottom"><dl><Detail title="Last activity" value={orchestrator.lastActivityAt ? date(orchestrator.lastActivityAt) : "No activity yet"} /><Detail title="Next scheduled work" value={orchestrator.nextRunAt ? date(orchestrator.nextRunAt) : "Not scheduled"} /><Detail title="Current mode" value={label(settings.mode ?? "approval")} /></dl><button className="btn outline" onClick={() => setTab("settings")}><Settings2 size={15} />Manage automation<ChevronRight size={14} /></button></div></div>
+    <div className="acc-summary"><div><span>Specialist agents</span><b>{state ? specialists.length : "—"}</b><small>Registry-backed roles</small></div><div><span>Completed steps</span><b>{count(completedSteps)}</b><small>Recent recorded activity</small></div><div><span>Pending packages</span><b>{state ? pending.length : "—"}</b><small>Review before any action</small></div><div><span>Needs your attention</span><b>{state ? attention.length : "—"}</b><small>Missing inputs or blocked work</small></div></div>
+    <nav className="acc-tabs" aria-label="Command center sections">{tabs.map(({ id, label: title, icon: Icon }) => <button key={id} type="button" className={tab === id ? "selected" : ""} aria-current={tab === id ? "page" : undefined} onClick={() => setTab(id)}><Icon size={16} />{title}{id === "review" && pending.length > 0 && <span>{pending.length}</span>}</button>)}</nav>
+    {tab === "overview" && <><div className="acc-panel acc-start"><div><h2>Start a career workflow</h2><p>Use a saved search to discover, verify and prepare suitable opportunities. Your mandatory preferences remain in force.</p></div><div className="acc-start-controls"><label className="acc-sr-only" htmlFor="acc-run-search">Saved search for this workflow</label><select id="acc-run-search" value={selectedSearch} onChange={(event) => setSelectedSearch(event.target.value)}><option value="">Choose a saved search</option>{searches.filter((search) => search.enabled !== false).map((search) => <option key={text(search.id)} value={text(search.id)}>{text(search.label, "Saved search")}</option>)}</select><button className="btn primary" disabled={busy || demo || paused || !selectedSearch} onClick={() => action("runs", "POST", { searchId: selectedSearch, idempotencyKey: crypto.randomUUID() }, "Workflow started. Its recorded activity will appear below.")}><Play size={15} />Run search</button></div></div>{attention.length > 0 && <div className="acc-attention"><h2><Bell size={18} />Needs your attention</h2>{attention.map((item, index) => <p key={text(item.id, String(index))}>{text(item.message ?? item.reason ?? item.label, "Review this workflow before continuing.")}</p>)}<button className="acc-text-button" onClick={() => setTab("review")}>Review pending actions<ArrowUpRight size={15} /></button></div>}{runs.filter((run) => /^(queued|running|processing|needs_input|needs_review)$/i.test(text(run.status))).map((run) => <div className="acc-run-strip" key={text(run.id)}><Activity size={18} /><div><b>{text(run.label ?? run.goal ?? run.currentTask, "Career workflow")}</b><p>{text(run.reason ?? run.summary, "Review the activity history for completed and pending steps.")}</p></div><Badge value={run.status} />{/^(queued)$/i.test(text(run.status)) && <button className="btn outline small" disabled={busy || demo || paused} onClick={() => action("runs/" + encodeURIComponent(text(run.id)) + "/continue", "POST", {}, "The next permitted workflow step has been requested.")}><Play size={14} />Continue workflow</button>}</div>)}<div className="acc-section-heading"><div><h2>Your specialist team</h2><p>Each card reflects recent persisted activity.</p></div><span className="acc-subtle">Orchestrator shown separately</span></div>{specialists.length ? <div className="acc-agent-grid">{specialists.map((agent) => <AgentCard key={text(agent.id)} agent={agent} />)}</div> : <Empty title="Your agents will appear here">Sign in and load your private workspace to see the registered specialists and their current status.</Empty>}<div className="acc-note"><ShieldCheck size={18} /><p>Approving a package does not submit an application. External execution and communication stay unavailable until a supported, verified connection exists.</p></div></>}
+    {tab === "searches" && <SavedSearches searches={searches} settings={settings} busy={busy || demo} editing={editingSearch} setEditing={setEditingSearch} action={action} />}
+    {tab === "vault" && <CareerVault jobs={rows(data.supportedJobChoices)} fields={vault} answers={answers} history={rows(data.vaultHistory)} busy={busy || demo} action={action} />}
+    {tab === "review" && <PackageReview packages={pending} jobs={rows(data.supportedJobChoices)} busy={busy || demo} action={action} />}
+    {tab === "history" && <ActivityHistory activity={activity} runs={runs} insights={object(data.insights)} followups={rows(data.followups ?? data.followUpDrafts)} />}
+    {tab === "settings" && <AutomationSettings key={text(settings.revision, "initial")} settings={settings} schedule={object(data.schedule ?? settings.schedule)} integration={object(data.unattended ?? data.integration)} busy={busy || demo || !state} action={action} />}
+  </section>;
+}
+
+function SavedSearches({ searches, settings, busy, editing, setEditing, action }: { searches: Row[]; settings: Row; busy: boolean; editing: Row | null | undefined; setEditing: (search: Row | null | undefined) => void; action: Action }) {
+  return <><div className="acc-section-heading"><div><h2>Searches built around your goals</h2><p>Save separate career directions while keeping your mandatory profile preferences.</p></div><button className="btn primary" disabled={busy} onClick={() => setEditing(null)}><Plus size={16} />New saved search</button></div>{editing !== undefined && <SearchForm key={editing ? text(editing.id) + text(editing.revision) : "new"} search={editing} busy={busy} action={action} close={() => setEditing(undefined)} />}{searches.length ? <div className="acc-search-grid">{searches.map((search) => { const preferences = object(search.preferences); return <article className="acc-panel" key={text(search.id)}><div className="acc-card-heading"><span className="acc-agent-icon"><Search size={19} /></span><Badge value={search.enabled === false ? "Paused" : "Enabled"} /></div><h3>{text(search.label, "Saved search")}</h3><p>{text(search.goal, strings(preferences.targetRoles).join(", ") || "Uses your current career goals.")}</p><dl className="acc-details"><Detail title="Target roles" value={strings(preferences.targetRoles).join(", ") || "From your profile"} /><Detail title="Preferred cities" value={strings(preferences.preferredCities).join(", ") || "From your profile"} /><Detail title="Work arrangement" value={strings(preferences.workArrangements).join(", ") || "From your profile"} /><Detail title="Last updated" value={date(search.updatedAt)} /></dl><div className="acc-card-actions"><button className="btn outline small" disabled={busy} onClick={() => setEditing(search)}>Edit</button><button className="btn primary small" disabled={busy || settings.pausedAll === true || search.enabled === false} onClick={() => action("runs", "POST", { searchId: search.id, idempotencyKey: crypto.randomUUID() }, "Your selected search workflow has started.")}><Play size={14} />Run search</button><button className="acc-icon-button" aria-label={"Delete saved search " + text(search.label)} disabled={busy} onClick={async () => { if (window.confirm("Delete this saved search? Its recorded history will remain available.")) await action("searches/" + encodeURIComponent(text(search.id)), "DELETE", {}, "Saved search deleted."); }}><Trash2 size={16} /></button></div></article>; })}</div> : <Empty title="Create your first saved search">Try a direction such as “Product design in Pune”. A search never silently expands a mandatory location or work arrangement.</Empty>}</>;
+}
+function SearchForm({ search, busy, action, close }: { search: Row | null; busy: boolean; action: Action; close: () => void }) {
+  const initial = object(search?.preferences);
+  const [name, setName] = useState(text(search?.label));
+  const [goal, setGoal] = useState(text(search?.goal));
+  const [enabled, setEnabled] = useState(search?.enabled !== false);
+  const [inherit, setInherit] = useState(Object.keys(initial).length === 0);
+  const [roles, setRoles] = useState(strings(initial.targetRoles).join(", "));
+  const [cities, setCities] = useState(strings(initial.preferredCities).join(", "));
+  const [industries, setIndustries] = useState(strings(initial.industries).join(", "));
+  const [arrangements, setArrangements] = useState(strings(initial.workArrangements));
+  const [employment, setEmployment] = useState(strings(initial.employmentTypes));
+  const [excludeCompanies, setExcludeCompanies] = useState(strings(initial.excludeCompanies).join(", "));
+  const [excludeRoles, setExcludeRoles] = useState(strings(initial.excludeRoles).join(", "));
+  const [excludeLocations, setExcludeLocations] = useState(strings(initial.excludeLocations).join(", "));
+  const [salaryMin, setSalaryMin] = useState(text(initial.expectedSalaryMin));
+  const [salaryMax, setSalaryMax] = useState(text(initial.expectedSalaryMax));
+  const [currency, setCurrency] = useState(text(initial.salaryCurrency, "INR"));
+  const [basis, setBasis] = useState(text(initial.salaryBasis, "annual"));
+  const [mandatoryLocation, setMandatoryLocation] = useState(initial.mandatoryLocation !== false);
+  const [mandatoryWork, setMandatoryWork] = useState(initial.mandatoryWorkArrangement !== false);
+  const [mandatorySalary, setMandatorySalary] = useState(initial.mandatorySalary === true);
+  const split = (value: string) => value.split(",").map((item) => item.trim()).filter(Boolean);
+  const toggle = (list: string[], value: string) => list.includes(value) ? list.filter((item) => item !== value) : [...list, value];
+  async function save(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const preferences: Row = inherit ? {} : { ...initial, targetRoles: split(roles), preferredCities: split(cities), industries: split(industries), workArrangements: arrangements, employmentTypes: employment, excludeCompanies: split(excludeCompanies), excludeRoles: split(excludeRoles), excludeLocations: split(excludeLocations), mandatoryLocation, mandatoryWorkArrangement: mandatoryWork, expectedSalaryMin: salaryMin ? Number(salaryMin) : null, expectedSalaryMax: salaryMax ? Number(salaryMax) : null, salaryCurrency: currency, salaryBasis: basis, mandatorySalary };
+    const body: Row = { label: name, goal, preferences, enabled };
+    if (search) body.expectedRevision = search.revision;
+    if (await action(search ? "searches/" + encodeURIComponent(text(search.id)) : "searches", search ? "PATCH" : "POST", body, "Saved search updated. Mandatory profile preferences remain enforced.")) close();
+  }
+  return <form className="acc-panel acc-edit-form" onSubmit={save}><div className="acc-section-heading"><h3>{search ? "Edit saved search" : "New saved search"}</h3><button className="acc-icon-button" type="button" aria-label="Close saved search editor" onClick={close}><X size={18} /></button></div><div className="acc-form-grid"><Field label="Search name"><input value={name} onChange={(event) => setName(event.target.value)} required maxLength={120} placeholder="Product design in Pune" /></Field><Field label="Career goal"><input value={goal} onChange={(event) => setGoal(event.target.value)} maxLength={1000} placeholder="Move into senior product development" /></Field></div><CheckField checked={enabled} onChange={setEnabled}>Include this search in permitted workflows</CheckField><CheckField checked={inherit} onChange={setInherit}>Use my current profile preferences</CheckField>{!inherit && <><div className="acc-form-grid"><Field label="Target roles" hint="Separate multiple roles with commas."><input value={roles} onChange={(event) => setRoles(event.target.value)} maxLength={3000} /></Field><Field label="Preferred cities" hint="Separate multiple cities with commas."><input value={cities} onChange={(event) => setCities(event.target.value)} maxLength={3000} /></Field><Field label="Industries"><input value={industries} onChange={(event) => setIndustries(event.target.value)} maxLength={3000} /></Field><Field label="Excluded companies"><input value={excludeCompanies} onChange={(event) => setExcludeCompanies(event.target.value)} maxLength={3000} /></Field><Field label="Excluded roles"><input value={excludeRoles} onChange={(event) => setExcludeRoles(event.target.value)} maxLength={3000} /></Field><Field label="Excluded locations"><input value={excludeLocations} onChange={(event) => setExcludeLocations(event.target.value)} maxLength={3000} /></Field></div><fieldset className="acc-choice-set"><legend>Work arrangement</legend>{["On-site", "Hybrid", "Remote"].map((item) => <CheckField key={item} checked={arrangements.includes(item)} onChange={() => setArrangements(toggle(arrangements, item))}>{item}</CheckField>)}</fieldset><fieldset className="acc-choice-set"><legend>Employment type</legend>{["Full-time", "Part-time", "Contract", "Internship", "Freelance"].map((item) => <CheckField key={item} checked={employment.includes(item)} onChange={() => setEmployment(toggle(employment, item))}>{item}</CheckField>)}</fieldset><div className="acc-form-grid"><Field label="Expected salary minimum"><input type="number" min="0" value={salaryMin} onChange={(event) => setSalaryMin(event.target.value)} /></Field><Field label="Expected salary maximum"><input type="number" min="0" value={salaryMax} onChange={(event) => setSalaryMax(event.target.value)} /></Field><Field label="Currency"><input value={currency} onChange={(event) => setCurrency(event.target.value.toUpperCase())} maxLength={3} pattern="[A-Z]{3}" /></Field><Field label="Salary basis"><select value={basis} onChange={(event) => setBasis(event.target.value)}><option value="annual">Annual</option><option value="monthly">Monthly</option></select></Field></div><div className="acc-choice-set"><CheckField checked={mandatoryLocation} onChange={setMandatoryLocation}>Location is mandatory</CheckField><CheckField checked={mandatoryWork} onChange={setMandatoryWork}>Work arrangement is mandatory</CheckField><CheckField checked={mandatorySalary} onChange={setMandatorySalary}>Salary range is mandatory</CheckField></div></>}<div className="acc-note"><ShieldCheck size={17} /><p>A saved search can narrow your goals. It cannot relax your profile&apos;s mandatory preferences; conflicting changes are rejected by the server.</p></div><div className="acc-form-actions"><button type="button" className="btn outline" onClick={close}>Cancel</button><button type="submit" className="btn primary" disabled={busy}><Check size={15} />Save search</button></div></form>;
+}
+
+function CareerVault({ fields, answers, history, busy, action, jobs }: { fields: Row[]; answers: Row[]; history: Row[]; busy: boolean; action: Action; jobs: Row[] }) {
+  return <><div className="acc-section-heading"><div><h2>A career vault you can trust</h2><p>Verified facts are confirmed by you. Inferred and unknown information stays separate.</p></div><span className="acc-private"><ShieldCheck size={15} />Private to your account</span></div><div className="acc-note"><BookOpenCheck size={18} /><p>Confirm only accurate information. Missing facts remain unknown, and inferred facts never become application answers without your review.</p></div><div className="acc-vault-grid">{fields.map((field) => <VaultField key={text(field.key) + text(field.revision)} field={field} history={history.filter((item) => item.key === field.key).map((item) => ({ ...object(item.data), ...item, ...object(object(item.data).after) }))} busy={busy} action={action} />)}</div>{fields.length === 0 && <Empty title="No career facts recorded yet">Complete your profile and run a profile workflow to review its known and uncertain information.</Empty>}<div className="acc-section-heading"><div><h2>Confirmed screening answers</h2><p>Store reusable answers without letting an agent guess them.</p></div></div><div className="acc-answer-grid">{answers.map((answer) => <AnswerForm key={text(answer.key) + text(answer.revision)} answer={answer} busy={busy} action={action} />)}<AnswerForm key="new-answer" answer={null} busy={busy} action={action} /></div><FeedbackForm jobs={jobs} busy={busy} action={action} /><p className="acc-subtle">Deleting a source resume or conversation can leave copies in your private application packages and activity history. Full removal and retention controls need additional setup.</p></>;
+}
+function VaultField({ field, history, busy, action }: { field: Row; history: Row[]; busy: boolean; action: Action }) {
+  const [value, setValue] = useState(text(field.value));
+  const [confirmed, setConfirmed] = useState(false);
+  return <form className="acc-panel" onSubmit={(event) => { event.preventDefault(); void action("vault/confirm", "POST", { key: field.key, label: field.label, value, confirmed: true, expectedRevision: field.revision }, "Career fact confirmed. Existing package approvals may need review again."); }}><div className="acc-card-heading"><h3>{text(field.label, label(field.key))}</h3><Badge value={field.classification} /></div><Field label={"Value for " + text(field.label, label(field.key))}><textarea value={value} onChange={(event) => { setValue(event.target.value); setConfirmed(false); }} rows={3} maxLength={6000} placeholder="Add the accurate value, or leave it unknown." /></Field><p className="acc-subtle">Source: {text(field.source, "Not recorded")}{field.confirmedAt ? " · Confirmed " + date(field.confirmedAt) : ""}</p><CheckField checked={confirmed} onChange={setConfirmed}>I have checked this information and confirm it is accurate.</CheckField><button className="btn outline small" disabled={busy || !confirmed || !value.trim()}><CheckCircle2 size={14} />Verify fact</button><details className="acc-detail"><summary>Field history</summary>{history.length ? history.map((item, index) => <div className="acc-history-entry" key={text(item.id, String(index))}><b>{label(item.classification)}</b><p>{text(item.value, "Unknown")}</p><small>{date(item.createdAt ?? item.confirmedAt)} · {text(item.source, "User review")}</small></div>) : <p>{field.confirmedAt ? "Current confirmation: " + date(field.confirmedAt) : "No earlier confirmation is recorded."}</p>}</details></form>;
+}
+function AnswerForm({ answer, busy, action }: { answer: Row | null; busy: boolean; action: Action }) {
+  const [key, setKey] = useState(text(answer?.key));
+  const [question, setQuestion] = useState(text(answer?.question));
+  const [value, setValue] = useState(text(answer?.value));
+  const [confirmed, setConfirmed] = useState(false);
+  return <form className="acc-panel" onSubmit={(event) => { event.preventDefault(); const body: Row = { key: key.trim().toLowerCase().replace(/\s+/g, "_"), question, value, confirmed: true }; if (answer) body.expectedRevision = answer.revision; void action("answers", "POST", body, "Answer confirmed. Prepare a fresh package if an earlier package used a different answer."); }}><h3>{answer ? text(answer.question, "Confirmed answer") : "Add a reusable answer"}</h3>{!answer && <><Field label="Short answer label" hint="For example: work authorization or availability."><input value={key} onChange={(event) => setKey(event.target.value)} required maxLength={100} /></Field><Field label="Screening question"><input value={question} onChange={(event) => setQuestion(event.target.value)} required maxLength={1000} /></Field></>}<Field label="Your answer"><textarea value={value} onChange={(event) => { setValue(event.target.value); setConfirmed(false); }} rows={3} required maxLength={6000} /></Field>{answer?.confirmedAt ? <p className="acc-subtle">Last confirmed {date(answer.confirmedAt)}</p> : null}<CheckField checked={confirmed} onChange={setConfirmed}>I confirm this answer is accurate and may be reused in reviewed packages.</CheckField><button className="btn outline small" disabled={busy || !confirmed || !value.trim() || !key.trim()}><Check size={14} />Save confirmed answer</button></form>;
+}
+function FeedbackForm({ busy, action, jobs }: { busy: boolean; action: Action; jobs: Row[] }) {
+  const [reason, setReason] = useState("Not relevant");
+  const [details, setDetails] = useState("");
+  const [jobId, setJobId] = useState("");
+  return <form className="acc-panel acc-feedback" onSubmit={async (event) => {
+    event.preventDefault();
+    if (await action("feedback", "POST", { reason, details, ...(jobId ? { jobId } : {}) }, jobId ? "Feedback saved for this job. Your mandatory preferences and evidence score stay in force." : "General feedback saved as career memory. It does not change job rankings.")) setDetails("");
+  }}><h3>Help improve future matches</h3><p>Job-specific feedback lowers that listing&apos;s preparation priority. General feedback is recorded as memory; it does not change rankings or your mandatory preferences.</p><div className="acc-form-grid"><Field label="Job for this feedback" hint="Optional. Choose a listing to adjust its preparation priority."><select value={jobId} onChange={(event) => setJobId(event.target.value)}><option value="">General career feedback</option>{jobs.map(job => <option key={text(job.id)} value={text(job.id)}>{text(job.title)} · {text(job.company)}</option>)}</select></Field><Field label="Feedback reason"><select value={reason} onChange={(event) => setReason(event.target.value)}>{["Not relevant", "Too junior", "Too senior", "Wrong location", "Wrong work arrangement", "Wrong job type"].map(item => <option key={item}>{item}</option>)}</select></Field><Field label="Details or job types to avoid"><input value={details} onChange={(event) => setDetails(event.target.value)} maxLength={1000} placeholder="Describe what makes these roles unsuitable." /></Field></div><button className="btn outline small" disabled={busy}><Check size={14} />Save feedback</button></form>;
+}
+function PackageReview({ packages, jobs, busy, action }: { packages: Row[]; jobs: Row[]; busy: boolean; action: Action }) {
+  const [selectedJob, setSelectedJob] = useState("");
+  return <><div className="acc-section-heading"><div><h2>Review every application package</h2><p>Confirm the job, exact document versions, screening answers and personal details before approving.</p></div></div><form className="acc-panel acc-start" onSubmit={(event) => { event.preventDefault(); void action("packages", "POST", { jobId: selectedJob }, "Package prepared from the current owned job and active resume. Review every detail before approval."); }}><div><h3>Prepare a selected opportunity</h3><p>Use an owned listing and your active resume. Missing information stays visible for review.</p></div><div className="acc-start-controls"><label className="acc-sr-only" htmlFor="acc-package-job">Job for this application package</label><select id="acc-package-job" value={selectedJob} onChange={(event) => setSelectedJob(event.target.value)}><option value="">Choose a saved job</option>{jobs.map((job) => <option key={text(job.id)} value={text(job.id)}>{text(job.title)} · {text(job.company)}</option>)}</select><button className="btn outline" disabled={busy || !selectedJob}><FileCheck2 size={15} />Prepare package</button></div></form><div className="acc-note"><ShieldCheck size={19} /><p>Preparation and approval do not submit an application. Opening a listing does not mark it Applied. Missing required facts must be supplied by you.</p></div>{packages.length ? <div className="acc-packages">{packages.map((pack) => <PackageCard key={text(pack.id) + text(pack.revision)} pack={pack} busy={busy} action={action} />)}</div> : <Empty title="No packages waiting for review">Run a saved search to prepare suitable jobs. Your decisions and any blocked steps will appear here.</Empty>}</>;
+}
+function PackageCard({ pack, busy, action }: { pack: Row; busy: boolean; action: Action }) {
+  const snapshot = object(pack.snapshot);
+  const job = object(snapshot.job);
+  const resume = object(snapshot.resume);
+  const tailored = object(snapshot.tailoredResume);
+  const cover = object(snapshot.coverLetter);
+  const approval = object(pack.approval);
+  const unknowns = rows(pack.unknowns);
+  const requiredUnknowns = unknowns.filter((item) => item.required === true);
+  const screening = rows(snapshot.screeningAnswers);
+  const personal = rows(snapshot.personalData);
+  const url = safeLink(job.url);
+  const [reviewed, setReviewed] = useState(false);
+  const [ackUnknowns, setAckUnknowns] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [coverText, setCoverText] = useState(text(cover.text));
+  const [personalFields, setPersonalFields] = useState(personal.map((item) => text(item.field)));
+  const [editConfirmed, setEditConfirmed] = useState(false);
+  const approved = approval.status === "approved" && pack.status === "approved";
+  const canApprove = requiredUnknowns.length === 0 && !/^(needs_input|blocked|failed|uncertain|cancelled|submitted|stale|invalidated)$/i.test(text(pack.status));
+  async function saveDraft(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const body: Row = { personalDataFields: personalFields, confirmed: true, expectedRevision: pack.revision }; if (coverText.trim()) body.coverLetterText = coverText; if (await action("packages/" + encodeURIComponent(text(pack.id)), "PATCH", body, "Package updated. Any earlier approval has been invalidated; review the new snapshot.")) setEditing(false);
+  }
+  return <article className="acc-panel acc-package" data-package-id={text(pack.id)}><div className="acc-package-heading"><div><span className="acc-eyebrow">APPLICATION PACKAGE</span><h3>{text(job.title, text(pack.label, "Prepared opportunity"))}</h3><p>{text(job.company, "Employer not provided")}</p></div><Badge value={pack.status} /></div><dl className="acc-details"><Detail title="Employer" value={job.company} /><div><dt>Original listing</dt><dd>{url ? <a href={url} target="_blank" rel="noopener noreferrer">{url}<ArrowUpRight size={13} /></a> : "No supported listing URL"}</dd></div><Detail title="Source" value={job.source} /><Detail title="Last checked" value={job.lastCheckedAt ? date(job.lastCheckedAt) : "Unknown"} /><Detail title="Posting date" value={job.postedAt ? date(job.postedAt) : "Unknown"} /><Detail title="Saved search" value={object(snapshot.search).label ?? "Current profile preferences"} /></dl><div className="acc-package-versions"><div><FileText size={17} /><span>Resume<b>{resume.id ? text(resume.title, "Resume") + " · version " + text(resume.version) : "No resume selected"}</b></span></div><div><FileCheck2 size={17} /><span>Cover letter<b>{cover.text ? "Version " + text(cover.version, "not assigned") : "Not provided"}</b></span></div></div>{text(approval.status) && <div className="acc-approval-state"><Badge value={approval.status} /><span>{approval.expiresAt ? "Approval expires " + date(approval.expiresAt) : "Approval is bound to this exact package."}</span></div>}{unknowns.length > 0 && <div className="acc-missing"><h4>{requiredUnknowns.length ? "Needs your input before approval" : "Uncertainties to review"}</h4><ul>{unknowns.map((item) => <li key={text(item.key)}><b>{text(item.label, label(item.key))}{item.required ? " · Required" : " · Optional"}</b><span>{text(item.message, "Provide accurate information or leave this unknown.")}</span></li>)}</ul><p>Update the matching career fact or confirmed answer, then prepare a fresh package. Values are never guessed.</p></div>}<div className="acc-package-sections"><details className="acc-detail"><summary><FileText size={15} />Exact resume content</summary><pre>{text(tailored.text ?? resume.text, "No confirmed resume content in this package.")}</pre>{text(tailored.sessionId) && <p className="acc-subtle">Job-specific draft from this workflow.</p>}</details><details className="acc-detail"><summary><FileCheck2 size={15} />Exact cover letter</summary><pre>{text(cover.text, "No cover letter has been prepared.")}</pre><button className="acc-text-button" disabled={busy} onClick={() => setEditing(true)}>Edit cover letter and disclosure<ChevronRight size={14} /></button></details><details className="acc-detail"><summary><ListChecks size={15} />Screening answers</summary>{screening.length ? screening.map((answer) => <div className="acc-screening-answer" key={text(answer.key)}><h4>{text(answer.question, label(answer.key))}</h4><Badge value={answer.classification} /><p>{text(answer.value, "Unknown — requires your answer")}</p>{answer.classification !== "VERIFIED" && <AnswerForm answer={{ key: answer.key, question: answer.question, value: "" }} busy={busy} action={action} />}</div>) : <p>No screening questions have been supplied for this listing. This does not mean an employer will ask none.</p>}{unknowns.filter((item) => text(item.key).startsWith("answer.") && !screening.some((answer) => "answer." + text(answer.key) === item.key)).map((item) => <AnswerForm key={text(item.key)} answer={{ key: text(item.key).slice(7), question: item.label, value: "" }} busy={busy} action={action} />)}</details><details className="acc-detail" open><summary><UserRound size={15} />Personal information in this package</summary>{personal.length ? <dl className="acc-details">{personal.map((item) => <Detail key={text(item.field)} title={label(item.field)} value={item.value} />)}</dl> : <p>No separate personal-information fields are included.</p>}<p className="acc-subtle">Resume and cover-letter text above may also contain personal information. No information is being sent by this review screen.</p></details></div>{editing && <form className="acc-package-editor" onSubmit={saveDraft}><div className="acc-section-heading"><h4>Edit this package</h4><button type="button" className="acc-icon-button" aria-label="Close package editor" onClick={() => setEditing(false)}><X size={16} /></button></div><Field label="Cover letter text"><textarea value={coverText} onChange={(event) => { setCoverText(event.target.value); setEditConfirmed(false); }} rows={8} maxLength={20000} /></Field><fieldset className="acc-choice-set"><legend>Keep these personal-information fields in the package</legend>{personal.map((item) => <CheckField key={text(item.field)} checked={personalFields.includes(text(item.field))} onChange={(value) => { setPersonalFields(value ? [...personalFields, text(item.field)] : personalFields.filter((field) => field !== item.field)); setEditConfirmed(false); }}>{label(item.field)}</CheckField>)}</fieldset><CheckField checked={editConfirmed} onChange={setEditConfirmed}>I checked this draft and the information included in it.</CheckField><button className="btn outline small" disabled={busy || !editConfirmed}>Save package changes</button></form>}<div className="acc-review-confirmation">{pack.status === "stale" && <p className="acc-subtle">This package is out of date. Refresh it and review the changed snapshot before approval.</p>}<button type="button" className="acc-text-button" disabled={busy} onClick={() => action("packages/" + encodeURIComponent(text(pack.id)), "PATCH", { confirmed: true, expectedRevision: pack.revision }, "Package refreshed. Earlier approval is invalid; review the current facts and documents again.")}><RefreshCw size={14} />Refresh package snapshot</button><CheckField checked={reviewed} onChange={setReviewed} disabled={!canApprove || busy || approved}>I reviewed this exact job, document versions, answers and personal information. I understand approval alone does not submit anything.</CheckField>{unknowns.some((item) => !item.required) && <CheckField checked={ackUnknowns} onChange={setAckUnknowns}>I reviewed the optional uncertainties listed above.</CheckField>}<div className="acc-card-actions"><button className="btn primary" disabled={busy || !canApprove || !reviewed || approved || (unknowns.some((item) => !item.required) && !ackUnknowns)} onClick={() => action("packages/" + encodeURIComponent(text(pack.id)) + "/approve", "POST", { confirmed: true, reviewedHash: pack.snapshotHash, expectedRevision: pack.revision, acknowledgedUnknowns: ackUnknowns }, "This exact package is approved for the recorded period. No application has been submitted.")}><CheckCircle2 size={16} />{approved ? "Package approved" : "Approve reviewed package"}</button>{url && <a className="btn outline" href={url} target="_blank" rel="noopener noreferrer">Open original listing<ArrowUpRight size={15} /></a>}<a className="btn outline" href={"/api/career/agents/packages/" + encodeURIComponent(text(pack.id)) + "/download"} download onClick={(event) => { if (busy) event.preventDefault(); }}><Download size={15} />Download package</a></div><p className="acc-subtle">Submission connection unavailable. Prepare and download your package, then apply yourself on the original employer page. Confirm Applied in your tracker only after you submit.</p></div></article>;
+}
+
+function ActivityHistory({ activity, runs, insights, followups }: { activity: Row[]; runs: Row[]; insights: Row; followups: Row[] }) {
+  return <><div className="acc-section-heading"><div><h2>Recorded agent activity</h2><p>Actual completed, blocked and failed steps, with their timestamps. Private packages and audit records can retain copies after a source document is deleted.</p></div></div>{activity.length ? <ol className="acc-timeline">{activity.map((item) => <li key={text(item.id)}><span className="acc-timeline-mark"><Activity size={16} /></span><div><div className="acc-timeline-heading"><h3>{label(item.agentId)}</h3><Badge value={item.status} /></div><p>{text(item.summary, label(item.action))}</p><small>{date(item.createdAt)}{item.runId ? " · Workflow " + text(item.runId) : ""}</small></div></li>)}</ol> : <Empty title="No activity recorded yet">Start a permitted workflow to see its real steps. We do not simulate progress.</Empty>}{runs.length > 0 && <section className="acc-panel"><h3>Workflow history</h3>{runs.map((run) => <div className="acc-history-entry" key={text(run.id)}><div className="acc-card-heading"><b>{text(run.goal, "Career workflow")}</b><Badge value={run.status} /></div><p>{text(run.summary, "No summary recorded yet.")}</p><small>Started {date(run.createdAt)} · Updated {date(run.updatedAt)}</small></div>)}</section>}<section className="acc-panel acc-insights"><h3>Market evidence from your workflow</h3>{insights.summary ? <><p>{text(insights.summary)}</p><p className="acc-subtle">{text(insights.limitation ?? insights.reason, "Limited to the sources and dates recorded below; not the whole job market.")}</p>{rows(insights.sources).map((source, index) => <p key={text(source.id, String(index))}>{safeLink(source.url) ? <a href={safeLink(source.url) ?? undefined} target="_blank" rel="noopener noreferrer">{text(source.title ?? source.label ?? source.source, "Recorded source")}<ArrowUpRight size={13} /></a> : text(source.title ?? source.label ?? source.source, "Recorded source")} · {date(source.checkedAt ?? source.lastCheckedAt)}</p>)}</> : <p>No dated market evidence has been recorded. A workflow may summarize your limited approved job sample; it cannot establish a market-wide trend or salary estimate.</p>}</section><section className="acc-panel"><h3>Follow-up drafts</h3><p>Drafting is separate from sending. No automated communication connection is available.</p>{followups.length ? followups.map((draft, index) => <details className="acc-detail" key={text(draft.id, String(index))}><summary>{text(draft.title ?? draft.subject, "Follow-up draft")}<Badge value="Unsent draft" /></summary><pre>{text(draft.text ?? draft.body, "No draft text recorded.")}</pre><small>{date(draft.createdAt)}</small></details>) : <p className="acc-subtle">No follow-up draft recorded yet.</p>}</section></>;
+}
+
+function AutomationSettings({ settings, schedule, integration, busy, action }: { settings: Row; schedule: Row; integration: Row; busy: boolean; action: Action }) {
+  const [mode, setMode] = useState(text(settings.mode, "approval"));
+  const [pausedCategories, setPausedCategories] = useState(strings(settings.pausedCategories));
+  const [enabled, setEnabled] = useState(schedule.enabled === true);
+  const [timeZone, setTimeZone] = useState(text(schedule.timeZone, "Asia/Kolkata"));
+  const [maxJobs, setMaxJobs] = useState(text(settings.maxJobsPerRun, "10"));
+  const [maxPackages, setMaxPackages] = useState(text(settings.maxPackagesPerRun, "3"));
+  async function save(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await action("settings", "PUT", { mode, pausedAll: settings.pausedAll === true, pausedCategories, expectedRevision: settings.revision, maxJobsPerRun: Number(maxJobs), maxPackagesPerRun: Number(maxPackages), schedule: { enabled, timeZone, runTime: "07:30" } }, "Automation settings saved. Unavailable external connections remain disabled.");
+  }
+  return <form className="acc-settings" onSubmit={save}><section className="acc-panel"><h2>Choose how your agents help</h2><p>Approval mode is the default. Permissions are always enforced by the server.</p><fieldset className="acc-mode-grid"><legend className="acc-sr-only">Career automation mode</legend>{[{ value: "assist", title: "Assist", description: "Get evidence and drafts. You choose each next step." }, { value: "approval", title: "Approval", description: "Prepare suitable opportunities and ask you to review each package." }, { value: "agentic", title: "Agentic", description: "Run permitted internal steps. External actions still need exact approval and supported access." }].map((item) => <label className={"acc-mode " + (mode === item.value ? "selected" : "")} key={item.value}><input type="radio" name="career-agent-mode" value={item.value} checked={mode === item.value} onChange={() => setMode(item.value)} /><strong>{item.title}{item.value === "approval" && <span>Recommended</span>}</strong><p>{item.description}</p></label>)}</fieldset></section><section className="acc-panel"><h2>Pause specific kinds of work</h2><p>A category pause stops its permitted future work. Pause all is available at the top of this page.</p><div className="acc-pause-grid">{pauseOptions.map(([key, title]) => <CheckField key={key} checked={pausedCategories.includes(key)} onChange={(value) => setPausedCategories(value ? [...pausedCategories, key] : pausedCategories.filter((item) => item !== key))}>Pause {title.toLowerCase()}</CheckField>)}</div></section><section className="acc-panel"><div className="acc-card-heading"><h2>Early daily preparation</h2><Badge value={schedule.configured === true ? schedule.status ?? "Configured" : "Setup required"} /></div><p>Prepare discoveries at 7:30 a.m. in your selected time zone, before the separate 8:00 a.m. job digest.</p><CheckField checked={enabled} onChange={setEnabled}>Request daily career workflows</CheckField><div className="acc-form-grid"><Field label="Time zone" hint="Use your local IANA time zone, for example Asia/Kolkata."><input value={timeZone} onChange={(event) => setTimeZone(event.target.value)} required maxLength={100} list="acc-timezones" /><datalist id="acc-timezones">{["Asia/Kolkata", "Europe/London", "America/New_York", "Asia/Dubai", "Asia/Singapore", "Australia/Sydney"].map((zone) => <option key={zone} value={zone} />)}</datalist></Field><Field label="Preparation time"><input type="time" value="07:30" readOnly /></Field><Field label="Maximum jobs per workflow"><input type="number" min="1" max="25" value={maxJobs} onChange={(event) => setMaxJobs(event.target.value)} required /></Field><Field label="Maximum prepared packages per workflow"><input type="number" min="1" max="3" value={maxPackages} onChange={(event) => setMaxPackages(event.target.value)} required /></Field></div><dl className="acc-details"><Detail title="Next scheduled work" value={schedule.nextRunAt ? date(schedule.nextRunAt, text(schedule.timeZone, "Asia/Kolkata")) : "Not scheduled"} /><Detail title="Unattended setup" value={text(schedule.reason ?? integration.reason, "Automatic work needs the authenticated private scheduler to be configured and deployed. Saving this preference does not deploy it.")} /></dl></section><section className="acc-note"><ShieldCheck size={18} /><p>Execution, communication, billing and administrator permissions cannot be enabled from this page. No browser setting replaces server checks or your explicit consent.</p></section><div className="acc-form-actions"><button className="btn primary" disabled={busy}><Check size={16} />Save automation settings</button></div></form>;
+}
+
+
+

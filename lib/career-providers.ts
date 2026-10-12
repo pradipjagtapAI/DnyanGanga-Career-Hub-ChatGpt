@@ -91,13 +91,15 @@ export async function boundedProviderJson(response: Response, limit = 4_000_000)
   const data = new Uint8Array(size); let offset = 0; for (const chunk of chunks) { data.set(chunk, offset); offset += chunk.byteLength; }
   try { return JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(data)); } catch { throw new CareerError(502, "INVALID_FEED", "The job source returned invalid data."); }
 }
-export async function fetchGreenhouseJobs(env: CareerProviderEnv, fetcher: Fetcher = fetch, now = new Date()): Promise<FeedResult[]> {
+export async function fetchGreenhouseJobs(env: CareerProviderEnv, fetcher: Fetcher = fetch, now = new Date(), beforeExternal?: (destination: string) => Promise<void>): Promise<FeedResult[]> {
   const boards = approvedGreenhouseBoards(env); if (!boards.length) throw new CareerError(503, "JOBS_NOT_CONFIGURED", "Authorized job feeds are not configured.");
   return Promise.all(boards.map(async (board) => {
     const checkedAt = now.toISOString();
     try {
       // Host/path are constructed only from server-approved board tokens. Redirects are rejected.
-      const response = await fetcher(`https://boards-api.greenhouse.io/v1/boards/${encodeURIComponent(board.board)}/jobs?content=true`, { headers: { accept: "application/json" }, redirect: "error", signal: AbortSignal.timeout(15000) });
+      const destination = `https://boards-api.greenhouse.io/v1/boards/${encodeURIComponent(board.board)}/jobs?content=true`;
+      await beforeExternal?.(destination);
+      const response = await fetcher(destination, { headers: { accept: "application/json" }, redirect: "error", signal: AbortSignal.timeout(15000) });
       const body = await boundedProviderJson(response) as { jobs?: unknown[]; meta?: { total?: number } };
       if (!body || !Array.isArray(body.jobs) || body.jobs.length > 2000 || (typeof body.meta?.total === "number" && body.meta.total !== body.jobs.length)) throw new CareerError(502, "INCOMPLETE_FEED", "The job source returned an incomplete snapshot.");
       const jobs = body.jobs.map((job) => normalizeGreenhouseJob(job, board, checkedAt)).filter((job): job is ProviderJob => job !== null);
@@ -126,8 +128,8 @@ export async function persistOwnedFeedResults(db: D1Database, userId: string, fe
   }
   return { count, closed };
 }
-export async function refreshOwnedJobs(db: D1Database, userId: string, env: CareerProviderEnv, fetcher: Fetcher = fetch) {
-  const feeds = await fetchGreenhouseJobs(env, fetcher); const persisted = await persistOwnedFeedResults(db, userId, feeds);
+export async function refreshOwnedJobs(db: D1Database, userId: string, env: CareerProviderEnv, fetcher: Fetcher = fetch, beforeExternal?: (destination: string) => Promise<void>) {
+  const feeds = await fetchGreenhouseJobs(env, fetcher, new Date(), beforeExternal); const persisted = await persistOwnedFeedResults(db, userId, feeds);
   const failedBoards = feeds.filter((feed) => feed.errorCode).map((feed) => ({ board: feed.board.board, code: feed.errorCode }));
   const checkedAt = new Date().toISOString();
   await db.prepare("INSERT INTO career_provider_health(provider,status,last_checked_at,error_code) VALUES('greenhouse',?,?,?) ON CONFLICT(provider) DO UPDATE SET status=excluded.status,last_checked_at=excluded.last_checked_at,error_code=excluded.error_code").bind(failedBoards.length ? "degraded" : "healthy", checkedAt, failedBoards.length ? "SOURCE_UNAVAILABLE" : null).run();

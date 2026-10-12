@@ -1,0 +1,32 @@
+{
+  "passed": true,
+  "executedAt": "2026-10-12T14:57:26.930Z",
+  "checks": 16,
+  "checkDescriptions": [
+    "Actual registry contains 17 specialists plus one orchestrator; default approval mode, no simulated activity",
+    "Saved search created and edited through real UI/API; mandatory profile preferences retained",
+    "Saved search starts actual bounded workflow; Continue calls real queued work without falsely claiming completion while document category paused",
+    "Pause all and Resume persist; category-specific pause survives both and global notice is visible",
+    "Mode, independent communications pause and 07:30 schedule preference persist; undeployed unattended setup remains honest",
+    "Direct package uses exact owned job and active resume; required unknown screening question is visible and approval blocked",
+    "Missing screening answer supplied in package UI with explicit confirmation; prior snapshot becomes stale",
+    "Vault edits require an explicit accurate-fact confirmation and create actual owned field history",
+    "Vault field history shows actual confirmed value and classification from persisted change records",
+    "Job-specific feedback is owner-linked and lowers queue priority by 10; evidence score and mandatory eligibility stay unchanged",
+    "Cover draft edited and reviewed; approval submits exact hash/version and never submits a job application or changes Applied count",
+    "Package download is an authenticated private attachment containing the reviewed snapshot",
+    "Changing a confirmed fact invalidates server approval; stale package cannot approve and refresh resets the explicit review checkbox",
+    "Activity history displays actual persisted workflow and review events",
+    "Command center has no horizontal overflow at 1440, 768 and 390 pixels; real desktop/mobile screenshots saved",
+    "No browser page errors during the exercised local workflows"
+  ],
+  "pageErrors": [],
+  "cleanupErrors": [],
+  "failure": null,
+  "scope": "Fixed synthetic loopback identity, actual local D1 and browser; no live AI, employer submission, messaging or production identity tests.",
+  "cleanup": "Original profile, preferences, settings, active resume, vault, answers and feedback restored; created searches/jobs/resumes/AI sessions removed. Labelled synthetic agent run/activity/package history may remain locally.",
+  "screenshots": [
+    "outputs/agent-command-center-desktop.png",
+    "outputs/agent-command-center-mobile.png"
+  ]
+}

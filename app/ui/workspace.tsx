@@ -41,6 +41,7 @@ import {
   LockKeyhole,
 } from "lucide-react";
 import { Brand } from "./public";
+import { AgentCommandCenter } from "./agent-command-center";
 import {
   SourceConnection,
   MatchExplanation,
@@ -51,6 +52,7 @@ import {
 } from "./career-tools";
 const navigation = [
   ["overview", "Dashboard", LayoutDashboard],
+  ["agents", "AI Agent Command Center", Compass],
   ["profile", "My Profile", UserRound],
   ["resumes", "My Resumes", FileText],
   ["jobs", "Job Matches", BriefcaseBusiness],
@@ -65,6 +67,9 @@ const navigation = [
 const statuses = [
   "Saved",
   "Preparing",
+  "Needs Review",
+  "Needs Your Input",
+  "Submission Unconfirmed",
   "Applied",
   "Interview",
   "Offer",
@@ -880,6 +885,7 @@ export default function CareerWorkspace({
           </div>
         </header>
         <main id="workspace-main" className="workspace-main">
+          {!demo && state.agentic?.settings?.pausedAll && <div className="agent-pause-notice" role="status"><ShieldCheck size={18} /><span>All agents are paused. You can still review and update your own records.</span><button className="text-button" onClick={() => go("agents")}>Manage agents <ArrowRight size={14} /></button></div>}
           {demo && (
             <div className="demo-banner">
               <span>
@@ -913,6 +919,7 @@ export default function CareerWorkspace({
             />
           ) : (
             <>
+              {view === "agents" && <AgentCommandCenter state={state.agentic} onState={setState} demo={demo} />}
               {view === "overview" && (
                 <>
                   <div className="page-heading">

@@ -11,13 +11,15 @@
     "build": "node scripts/run-framework.mjs build",
     "start": "node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js dev --config dist/server/wrangler.json --local --persist-to .wrangler/state --ip 127.0.0.1 --inspector-port 0",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
-    "test": "node --experimental-strip-types --test tests/career-security.test.mjs tests/career-ai.test.mjs tests/provider-alerts.test.mjs",
+    "test": "node --experimental-strip-types --test tests/career-security.test.mjs tests/career-ai.test.mjs tests/provider-alerts.test.mjs tests/agent-matching.test.mjs tests/agent-store.test.mjs tests/agent-orchestrator.test.mjs",
     "typecheck": "tsc --noEmit --incremental false",
     "security:audit": "npm audit",
     "db:generate": "drizzle-kit generate",
     "test:http": "node tests/http-smoke.mjs",
     "test:browser": "node tests/browser-smoke.mjs && node tests/account-browser-smoke.mjs && node tests/upgrade-browser-smoke.mjs",
-    "test:headers": "node tests/header-smoke.mjs"
+    "test:headers": "node tests/header-smoke.mjs",
+    "test:agents": "node --experimental-strip-types --test tests/agent-matching.test.mjs tests/agent-store.test.mjs tests/agent-orchestrator.test.mjs",
+    "test:agents:browser": "node tests/agent-browser-smoke.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",

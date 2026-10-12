@@ -6,7 +6,7 @@ export class CareerError extends Error {
     super(message); this.status = status; this.code = code;
   }
 }
-export const APPLICATION_STATUSES = ["Saved", "Preparing", "Applied", "Interview", "Offer", "Rejected", "Withdrawn", "Closed"] as const;
+export const APPLICATION_STATUSES = ["Saved", "Preparing", "Needs Review", "Needs Your Input", "Submission Unconfirmed", "Applied", "Interview", "Offer", "Rejected", "Withdrawn", "Closed"] as const;
 export type ApplicationStatus = typeof APPLICATION_STATUSES[number];
 export const ARRANGEMENTS = ["Remote", "Hybrid", "On-site"] as const;
 export const INTEGRATIONS = {
