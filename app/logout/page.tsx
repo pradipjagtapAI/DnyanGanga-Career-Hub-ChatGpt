@@ -1,0 +1,1 @@
+import { AdminLogout } from "../ui/admin"; export const dynamic = "force-dynamic"; export default function LogoutPage() { return <AdminLogout />; }

@@ -47,7 +47,7 @@ export function PublicHeader() {
       <div className="header-actions">
         <a
           className="signin"
-          href="/signin-with-chatgpt?return_to=%2Fdashboard"
+          href="/admin/login?return_to=%2Fdashboard"
           target="_top"
         >
           Sign in
@@ -70,6 +70,7 @@ export function Footer() {
         <a href="/privacy">Privacy</a>
         <a href="/terms">Terms</a>
         <a href="/security">Security</a>
+        <a href="/admin/login">Admin sign in</a>
       </nav>
       <span>
         © {new Date().getFullYear()} DnyanGanga Career Hub · Private review
@@ -374,7 +375,7 @@ export const publicPages: Record<
     sections: { title: string; text: string }[];
   }
 > = {
-  login: {label:"YOUR PRIVATE WORKSPACE",title:"Welcome back.",intro:"Continue through the hosting identity provider to open your existing career workspace.",sections:[{title:"Sign in with ChatGPT",text:"Accounts and sessions are managed by Sites. This website does not collect a separate password. Use the identity provider for sign-in recovery and its account security controls."}]},
+  login: {label:"YOUR PRIVATE WORKSPACE",title:"Welcome back.",intro:"Sign in with your sole administrator account to open the existing private career workspace.",sections:[{title:"Administrator sign in",text:"The administrator signs in using email, password and an authenticator code. Public registration and other application sign-in methods are unavailable."}]},
   "sign-up": {label:"GET STARTED",title:"Your next career chapter starts here.",intro:"Create your private workspace through the existing hosting identity provider, then confirm your profile and save your first resume.",sections:[{title:"An account you control",text:"Your profile, resumes and conversations stay private. The demonstration is separate from account records, and provider connections show their actual setup status."}]},
   features: {
     label: "THE PLATFORM",
@@ -458,7 +459,7 @@ export const publicPages: Record<
     sections: [
       {
         title: "1. Sign in and complete your profile",
-        text: "This private build uses Sign in with ChatGPT. Review your details and choose your target roles, skills and preferred cities.",
+        text: "The sole administrator signs in with email, password and an authenticator code. Review your details and choose your target roles, skills and preferred cities.",
       },
       {
         title: "2. Create and confirm your resume",
@@ -605,7 +606,7 @@ export const publicPages: Record<
       },
       {
         title: "Hosting identity",
-        text: "Sign-in and sessions are managed by Sites. Independent email/password registration, recovery and administrator MFA attestation are not implemented here. The Worker must be reachable only through trusted dispatch.",
+        text: "Application access uses the sole administrator email/password account with mandatory authenticator verification and server-side sessions. Public registration is disabled. Password recovery and sensitive administrator changes require a separately verified recovery process. Hosted owner verification is used only for the initial account setup; it does not grant career workspace access.",
       },
       {
         title: "Ongoing verification",
@@ -635,8 +636,8 @@ export function PublicPage({ slug }: { slug: string }) {
           ))}
         </div>
         {slug==="features"&&<nav className="content-sections" aria-label="Explore career tools">{[["ai-career-agents","AI career agents"],["resume-tools","Resume tools"],["job-discovery","Job discovery"],["interview-preparation","Interview preparation"],["career-coaching","Career coaching"]].map(([path,label])=><a className="text-link" key={path} href={"/"+path}>{label}<ArrowUpRight size={16}/></a>)}</nav>}
-        <a href={slug==="login"||slug==="sign-up"?"/signin-with-chatgpt?return_to=%2Fdashboard":"/demo"} target={slug==="login"||slug==="sign-up"?"_top":undefined} className="btn primary">
-          {slug==="login"||slug==="sign-up"?"Continue with ChatGPT":"Explore the workspace"} <ArrowRight size={17} />
+        <a href={slug==="login"||slug==="sign-up"?"/admin/login?return_to=%2Fdashboard":"/demo"} target={slug==="login"||slug==="sign-up"?"_top":undefined} className="btn primary">
+          {slug==="login"||slug==="sign-up"?"Administrator sign in":"Explore the workspace"} <ArrowRight size={17} />
         </a>
       </main>
       <Footer />

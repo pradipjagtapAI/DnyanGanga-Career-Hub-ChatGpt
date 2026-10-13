@@ -1,4 +1,5 @@
-import { getChatGPTUser } from "../../../chatgpt-auth";
+import { getCareerUser } from "../../../career-auth";
+import { adminAuthAvailability, type AdminAuthEnv } from "../../../../lib/career-admin-auth";
 import { env } from "cloudflare:workers";
 import { CareerError, INTEGRATIONS, assertMutationRequest, assertSameOrigin, disabledFeatureForPath, keys, readJsonBounded, string, strings } from "../../../../lib/career-core";
 import { CareerStore } from "../../../../lib/career-store";
@@ -23,6 +24,7 @@ const runtime = env as DocumentEnv & CareerAIEnv & CareerProviderEnv & {DB?:D1Da
 const privateHeaders = { "Cache-Control": "private, no-store, max-age=0", "Pragma": "no-cache", "Vary": "Cookie", "X-Content-Type-Options": "nosniff", "Cross-Origin-Resource-Policy": "same-origin" };
 function json(data: unknown, status = 200, extra: Record<string, string> = {}) { return Response.json(data, { status, headers: { ...privateHeaders, ...extra } }); }
 async function state(store:CareerStore) {
+  const adminAccess = adminAuthAvailability(runtime as AdminAuthEnv);
   const base=await store.state(),alerts=await getAlertState(store.db,store.identity.userId,runtime);
   const agentStore=new CareerAgentStore(store),confirmedProfile=await agentStore.confirmedProfile();
   const verifiedFacts=await agentStore.getVault();
@@ -37,7 +39,7 @@ async function state(store:CareerStore) {
     if(verified?.duplicateOf){ranked.relevance.eligible=false;ranked.relevance.score=null;ranked.relevance.label="Duplicate listing";ranked.relevance.excludedReasons.push("Same original application destination as another listing; excluded from repeated preparation.");ranked.opportunityPriority={...ranked.opportunityPriority,eligible:false,level:"Low",points:0,reasons:["Duplicate application destination; excluded from repeated preparation."]};}
     return {...job,...applyOwnedJobFeedback(ranked,job.id,agentic.feedback),verification:verified};
   }).sort((a,b)=>Number(b.relevance.eligible)-Number(a.relevance.eligible)||(b.rankingScore??-1)-(a.rankingScore??-1));
-  return {...base,jobs,...alerts,agentic,platform,metrics:{...base.metrics,suitableJobs:jobs.filter(job=>job.relevance.eligible).length},notifications:{...base.notifications,nextAlert:alerts.nextAlert},integrations:{...INTEGRATIONS,...getProviderIntegrationState(runtime),ai:aiAvailability(runtime),documents:documentAvailability(runtime)}};
+  return {...base,jobs,...alerts,agentic,platform,metrics:{...base.metrics,suitableJobs:jobs.filter(job=>job.relevance.eligible).length},notifications:{...base.notifications,nextAlert:alerts.nextAlert},integrations:{...INTEGRATIONS,...getProviderIntegrationState(runtime),ai:aiAvailability(runtime),documents:documentAvailability(runtime),admin:{status:adminAccess.configured?"configured":"disabled",reason:adminAccess.reason}}};
 }
 /** An external attempt cannot start unless current permissions and its private
  * immutable data manifest are durably recorded. Service secrets are excluded. */
@@ -73,7 +75,7 @@ async function handle(request: Request) {
       const results=await Promise.allSettled([runCareerAgentScheduler(runtime.DB,runtime),runAlertScheduler(runtime.DB,runtime)]);
       return json({agents:results[0].status==="fulfilled"?results[0].value:{status:"failed"},alerts:results[1].status==="fulfilled"?results[1].value:{status:"failed"}});
     }
-    const user = await getChatGPTUser();
+    const user = await getCareerUser(request);
     if (!user) return json({ error: "Sign in to use your private workspace.", code: "UNAUTHENTICATED" }, 401);
     const mutation = request.method !== "GET";
     const rawUpload=path.join("/")==="documents/upload"&&request.method==="POST";

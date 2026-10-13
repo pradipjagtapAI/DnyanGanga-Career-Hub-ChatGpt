@@ -204,3 +204,42 @@ export const learningTasks = sqliteTable("career_learning_tasks", {
 export const platformHistory = sqliteTable("career_platform_history", {
   id: text("id").primaryKey(), userId: text("user_id").notNull().references(() => careerAccounts.userId, { onDelete: "cascade" }), kind: text("kind").notNull(), entityId: text("entity_id").notNull(), revision: integer("revision").notNull(), action: text("action").notNull(), data: text("data").notNull(), createdAt: text("created_at").notNull(),
 }, t => [index("platform_history_owner").on(t.userId, t.createdAt)]);
+
+// Separate administrator identity realm. These records never map candidate IDs
+// by email. Better Auth alone owns credentials and authenticator ciphertext.
+export const adminUsers = sqliteTable("career_admin_users", {
+  id: text("id").primaryKey(), name: text("name").notNull(), email: text("email").notNull(), emailVerified: integer("email_verified").notNull().default(0), image: text("image"),
+  twoFactorEnabled: integer("two_factor_enabled").default(0), createdAt: text("created_at").notNull(), updatedAt: text("updated_at").notNull(),
+}, t=>[uniqueIndex("admin_email_unique").on(t.email)]);
+export const adminSessions = sqliteTable("career_admin_sessions", {
+  id: text("id").primaryKey(), userId: text("user_id").notNull().references(()=>adminUsers.id,{onDelete:"cascade"}), token: text("token").notNull(), expiresAt: text("expires_at").notNull(),
+  createdAt: text("created_at").notNull(), updatedAt: text("updated_at").notNull(), ipAddress: text("ip_address"), userAgent: text("user_agent"),
+}, t=>[uniqueIndex("admin_session_token_unique").on(t.token),index("admin_session_owner").on(t.userId)]);
+export const adminAccounts = sqliteTable("career_admin_accounts", {
+  id: text("id").primaryKey(), userId: text("user_id").notNull().references(()=>adminUsers.id,{onDelete:"cascade"}), accountId: text("account_id").notNull(), providerId: text("provider_id").notNull(),
+  accessToken: text("access_token"), refreshToken: text("refresh_token"), idToken: text("id_token"), accessTokenExpiresAt: text("access_token_expires_at"), refreshTokenExpiresAt: text("refresh_token_expires_at"), scope: text("scope"), password: text("password"), createdAt: text("created_at").notNull(), updatedAt: text("updated_at").notNull(),
+}, t=>[index("admin_account_owner").on(t.userId),uniqueIndex("admin_account_provider_unique").on(t.providerId,t.accountId)]);
+export const adminVerifications = sqliteTable("career_admin_verifications", {
+  id:text("id").primaryKey(),identifier:text("identifier").notNull(),value:text("value").notNull(),expiresAt:text("expires_at").notNull(),createdAt:text("created_at").notNull(),updatedAt:text("updated_at").notNull(),
+},t=>[index("admin_verification_identifier").on(t.identifier)]);
+export const adminTwoFactors = sqliteTable("career_admin_two_factors", {
+  id:text("id").primaryKey(),userId:text("user_id").notNull().references(()=>adminUsers.id,{onDelete:"cascade"}),secret:text("secret").notNull(),backupCodes:text("backup_codes").notNull(),verified:integer("verified").default(1),failedVerificationCount:integer("failed_verification_count").default(0),lockedUntil:text("locked_until"),
+},t=>[index("admin_totp_owner").on(t.userId),index("admin_totp_secret").on(t.secret)]);
+export const adminMemberships = sqliteTable("career_admin_memberships", {
+  userId:text("user_id").primaryKey().references(()=>adminUsers.id,{onDelete:"cascade"}),role:text("role").notNull(),enabled:integer("enabled").notNull().default(1),generation:integer("generation").notNull().default(0),workspaceUserId:text("workspace_user_id").notNull(),createdByOwner:text("created_by_owner").notNull(),createdAt:text("created_at").notNull(),
+});
+export const adminBootstrap = sqliteTable("career_admin_bootstrap", {
+  key:text("key").primaryKey(),ownerId:text("owner_id").notNull(),attemptId:text("attempt_id").notNull(),status:text("status").notNull(),userId:text("user_id"),createdAt:text("created_at").notNull(),completedAt:text("completed_at"),
+});
+export const adminMfaProofs = sqliteTable("career_admin_mfa_proofs", {
+  sessionId:text("session_id").primaryKey().references(()=>adminSessions.id,{onDelete:"cascade"}),userId:text("user_id").notNull().references(()=>adminUsers.id,{onDelete:"cascade"}),generation:integer("generation").notNull(),verifiedAt:integer("verified_at").notNull(),expiresAt:integer("expires_at").notNull(),
+});
+export const adminTotpReplay = sqliteTable("career_admin_totp_replay", {
+  hash:text("hash").primaryKey(),userId:text("user_id").notNull().references(()=>adminUsers.id,{onDelete:"cascade"}),expiresAt:integer("expires_at").notNull(),
+});
+export const adminThrottle = sqliteTable("career_admin_throttle", {
+  key:text("key").primaryKey(),windowStart:integer("window_start").notNull(),count:integer("count").notNull(),
+});
+export const adminSecurityEvents = sqliteTable("career_admin_security_events", {
+  id:text("id").primaryKey(),action:text("action").notNull(),actorId:text("actor_id"),outcome:text("outcome").notNull(),createdAt:text("created_at").notNull(),
+});

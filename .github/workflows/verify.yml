@@ -44,6 +44,8 @@ jobs:
         run: npm run install:ci
       - name: Run actual offline storage and policy suites
         run: npm test
+      - name: Run the isolated native D1 administrator workflow
+        run: npm run test:admin:worker
       - name: Typecheck
         run: npm run typecheck
       - name: Lint the reviewed application modules only
@@ -54,6 +56,11 @@ jobs:
           app/ui/agent-command-center.tsx app/ui/career-view-types.ts
           'app/api/career/[...path]/route.ts'
           scripts/check-release-readiness.mjs
+          lib/career-admin-auth.ts tests/admin-auth.test.mjs tests/admin-worker-smoke.mjs
+          app/career-auth.ts app/ui/admin.tsx app/admin/page.tsx app/admin/login/page.tsx
+          app/admin/ownership/page.tsx app/dashboard/page.tsx app/logout/page.tsx
+          app/login/page.tsx app/sign-up/page.tsx
+          'app/api/admin/[...path]/route.ts'
       - name: Build the current Worker application (no deployment)
         run: npm run build
       - name: Check tracked source and built browser assets for known secret patterns

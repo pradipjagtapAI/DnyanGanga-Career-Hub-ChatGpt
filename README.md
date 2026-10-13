@@ -2,7 +2,7 @@
 
 **Your AI-Powered Career Growth Platform
 
-Domain setup on 13 October 2026: Hostinger DNS connects `https://dolphincreation.com` to the same owner-private platform; email records and existing data are preserved. [Actual domain results and remaining browser checks](docs/dolphincreation-domain-setup.md), [release pipeline](docs/hosting-and-domain-plan.md), and [test evidence](docs/pipeline-test-results.md). GitHub verification runs on pushes; production publishing is a separate native Sites action.**
+Domain setup on 13 October 2026: Hostinger DNS connects `https://dolphincreation.com` to the same owner-private platform; email records and existing data are preserved. [Actual domain results](docs/dolphincreation-domain-setup.md), [release pipeline](docs/hosting-and-domain-plan.md), and [test evidence](docs/pipeline-test-results.md). GitHub verification runs on pushes; production publishing is a separate native Sites action.**
 
 This update extends the existing website, source repository, private Sites URL, managed sign-in, D1 database and R2 binding. It preserves the supplied green/orange logo, light design, original routes and existing records. The public workflows of Resodro, LoopCV and Simplify informed feature selection; their content, assets and outcome claims were not copied. Review and integration evidence: [connections guide](docs/integrations-update.md).
 
@@ -14,7 +14,7 @@ The current update coordinates **21 specialists and one central orchestrator**. 
 
 | Area | Working in this update | Remaining setup or limit |
 | --- | --- | --- |
-| Accounts | Existing Sign in with ChatGPT, private owner-bound workspace | Native identity owns registration/recovery/sessions; separate password accounts, trusted fresh authentication and MFA are not supplied by this app |
+| Accounts | Sole administrator email/password and authenticator; existing workspace mapped through proved ownership | Public registration and other application login methods are disabled. Initial private provisioning, hosted acceptance and independent perimeter cutover must be verified; automated recovery remains unavailable |
 | Profile | Editable career facts, multiple locations, mandatory/flexible preferences, salary range/currency/basis | Nonessential fields optional; no inferred or auto-confirmed qualifications |
 | Resumes | Manual editor/live preview, autosave/recovery, immutable versions, differences, restore/archive, explicit active selection/deletion, section visibility/order, three templates, PDF/DOCX/text export | Original PDF/DOCX ingestion requires a private scanner/converter; OCR is unconnected. PDF fonts support Latin scripts; DOCX/text preserve other scripts |
 | Jobs | User-provided descriptions, source attribution, unknown fields, filter-first explained matching, saved jobs and candidate-updated applications | Official Greenhouse board adapter awaits authorized employer boards and separate display/digest/AI rights; other portals are unconnected |
@@ -168,3 +168,6 @@ Production-only dependency audit reported zero findings; the full audit still ha
 The scheduler scans at most 50 accounts and attempts 30 dispatches/minute with a 60-minute catch-up window; 10,000 simultaneous 08:00 users exceed it. Documents and state retrieval need measured capacity and pagination before larger use. Use a small private pilot only after its external acceptance checks. Payments, admin role editing and public sharing remain disabled; do not recommend broad launch or sensitive-data collection based on local tests alone.
 
 The current conditional planning scenario is about USD 150 / 870 / 7,950 monthly for 100 / 1,000 / 10,000 active users. It is not a quote or capacity commitment. Official reference rates, formulas, excluded hosting/licensed-source costs and unverified WhatsApp allowances are documented in [research and cost assumptions](docs/platform-research-costs.md). Replace them with actual contracts and measured usage before setting prices. The current rollback tag is `pre-career-os-2026-10-12`.
+
+
+See [sole administrator setup and verification](docs/admin-login-setup.md) for the new authentication boundary, additive migration, server configuration and rollout checks. Older version-6 handover documents describe the previous native-login implementation.

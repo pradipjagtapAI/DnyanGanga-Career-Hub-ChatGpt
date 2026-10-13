@@ -11,7 +11,7 @@
     "build": "node scripts/run-framework.mjs build",
     "start": "node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js dev --config dist/server/wrangler.json --local --persist-to .wrangler/state --ip 127.0.0.1 --inspector-port 0",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
-    "test": "node --experimental-strip-types --test tests/career-security.test.mjs tests/career-ai.test.mjs tests/provider-alerts.test.mjs tests/agent-matching.test.mjs tests/agent-store.test.mjs tests/agent-orchestrator.test.mjs tests/platform-store.test.mjs tests/resume-tools.test.mjs",
+    "test": "node --experimental-strip-types --test tests/career-security.test.mjs tests/career-ai.test.mjs tests/provider-alerts.test.mjs tests/agent-matching.test.mjs tests/agent-store.test.mjs tests/agent-orchestrator.test.mjs tests/platform-store.test.mjs tests/resume-tools.test.mjs tests/admin-auth.test.mjs",
     "typecheck": "tsc --noEmit --incremental false",
     "security:audit": "npm audit",
     "db:generate": "drizzle-kit generate",
@@ -23,12 +23,15 @@
     "test:platform:browser": "node tests/platform-browser-smoke.mjs",
     "test:platform:http": "node tests/platform-http-smoke.mjs",
     "test:exports": "node --experimental-strip-types --test tests/resume-tools.test.mjs",
-    "test:resumes:browser": "node tests/resume-browser-smoke.mjs"
+    "test:resumes:browser": "node tests/resume-browser-smoke.mjs",
+    "test:admin": "node --experimental-strip-types --test tests/admin-auth.test.mjs",
+    "test:admin:worker": "node tests/admin-worker-smoke.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
     "@hookform/resolvers": "^5.7.1",
     "@shadcn/react": "^0.3.0",
+    "better-auth": "1.7.7",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
     "cmdk": "^1.1.1",
@@ -46,6 +49,7 @@
     "react-day-picker": "^10.0.1",
     "react-dom": "19.2.8",
     "react-hook-form": "^7.85.0",
+    "react-qr-code": "2.2.0",
     "react-resizable-panels": "^4.12.2",
     "recharts": "^3.8.0",
     "resend": "6.32.1",

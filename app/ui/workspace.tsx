@@ -861,7 +861,7 @@ export default function CareerWorkspace({
               </small>
             </div>
             <a
-              href={demo ? "/" : "/signout-with-chatgpt?return_to=%2F"}
+              href={demo ? "/" : "/logout"}
               target="_top"
               aria-label="Exit workspace"
             >
@@ -2213,11 +2213,11 @@ export default function CareerWorkspace({
                         <div>
                           <b>Sign-in & recovery</b>
                           <p>
-                            Managed by the hosting identity provider. Separate
+                            Administrator email/password and authenticator sign-in. Separate
                             email/password recovery is unavailable.
                           </p>
                         </div>
-                        <Pill tone="gray">Platform managed</Pill>
+                        <Pill tone="gray">Administrator only</Pill>
                       </div>
                       <div className="settings-row danger-row">
                         <div>
