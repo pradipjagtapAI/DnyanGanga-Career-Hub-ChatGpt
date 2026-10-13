@@ -47,13 +47,13 @@ export function PublicHeader() {
       <div className="header-actions">
         <a
           className="signin"
-          href="/admin/login?return_to=%2Fdashboard"
+          href="/login"
           target="_top"
         >
           Sign in
         </a>
-        <a className="btn primary small" href="/dashboard">
-          Get started <ArrowUpRight size={16} />
+        <a className="btn primary small" href="/sign-up">
+          Sign up <ArrowUpRight size={16} />
         </a>
       </div>
     </header>
@@ -216,7 +216,7 @@ export function Landing() {
               at a time.
             </p>
             <div className="hero-actions">
-              <a className="btn primary" href="/dashboard">
+              <a className="btn primary" href="/sign-up">
                 Start your career workspace <ArrowRight size={18} />
               </a>
               <a className="btn ghost" href="/demo">
@@ -357,7 +357,7 @@ export function Landing() {
               Explore the working demo, then create your own private workspace.
             </p>
           </div>
-          <a className="btn primary" href="/dashboard">
+          <a className="btn primary" href="/sign-up">
             Let's get started <ArrowUpRight size={19} />
           </a>
         </section>
@@ -375,8 +375,8 @@ export const publicPages: Record<
     sections: { title: string; text: string }[];
   }
 > = {
-  login: {label:"YOUR PRIVATE WORKSPACE",title:"Welcome back.",intro:"Sign in with your sole administrator account to open the existing private career workspace.",sections:[{title:"Administrator sign in",text:"The administrator signs in using email, password and an authenticator code. Public registration and other application sign-in methods are unavailable."}]},
-  "sign-up": {label:"GET STARTED",title:"Your next career chapter starts here.",intro:"Create your private workspace through the existing hosting identity provider, then confirm your profile and save your first resume.",sections:[{title:"An account you control",text:"Your profile, resumes and conversations stay private. The demonstration is separate from account records, and provider connections show their actual setup status."}]},
+  login: {label:"YOUR PRIVATE WORKSPACE",title:"Welcome back.",intro:"Sign in to your candidate account to open your private career workspace.",sections:[{title:"Administrator sign in",text:"Candidate sign-in is separate from administrator access. Available account providers show their current setup status."}]},
+  "sign-up": {label:"GET STARTED",title:"Your next career chapter starts here.",intro:"Create your private account with a verified email or an available sign-in provider, then confirm your profile and save your first resume.",sections:[{title:"An account you control",text:"Your profile, resumes and conversations stay private. The demonstration is separate from account records, and provider connections show their actual setup status."}]},
   features: {
     label: "THE PLATFORM",
     title: "A workspace that follows your ambition.",
@@ -459,7 +459,7 @@ export const publicPages: Record<
     sections: [
       {
         title: "1. Sign in and complete your profile",
-        text: "The sole administrator signs in with email, password and an authenticator code. Review your details and choose your target roles, skills and preferred cities.",
+        text: "Create a candidate account using an available sign-in method. Review your details and choose your target roles, skills and preferred cities.",
       },
       {
         title: "2. Create and confirm your resume",
@@ -606,7 +606,7 @@ export const publicPages: Record<
       },
       {
         title: "Hosting identity",
-        text: "Application access uses the sole administrator email/password account with mandatory authenticator verification and server-side sessions. Public registration is disabled. Password recovery and sensitive administrator changes require a separately verified recovery process. Hosted owner verification is used only for the initial account setup; it does not grant career workspace access.",
+        text: "Candidate accounts use a separate sign-in system with verified email, private server-side sessions and ownership checks. Email verification and password recovery require a configured sender; social sign-in requires approved provider credentials. Administrator access retains its separate password and mandatory authenticator check.",
       },
       {
         title: "Ongoing verification",
@@ -636,8 +636,8 @@ export function PublicPage({ slug }: { slug: string }) {
           ))}
         </div>
         {slug==="features"&&<nav className="content-sections" aria-label="Explore career tools">{[["ai-career-agents","AI career agents"],["resume-tools","Resume tools"],["job-discovery","Job discovery"],["interview-preparation","Interview preparation"],["career-coaching","Career coaching"]].map(([path,label])=><a className="text-link" key={path} href={"/"+path}>{label}<ArrowUpRight size={16}/></a>)}</nav>}
-        <a href={slug==="login"||slug==="sign-up"?"/admin/login?return_to=%2Fdashboard":"/demo"} target={slug==="login"||slug==="sign-up"?"_top":undefined} className="btn primary">
-          {slug==="login"||slug==="sign-up"?"Administrator sign in":"Explore the workspace"} <ArrowRight size={17} />
+        <a href={slug==="login"||slug==="sign-up"?"/login":"/demo"} target={slug==="login"||slug==="sign-up"?"_top":undefined} className="btn primary">
+          {slug==="login"||slug==="sign-up"?"Candidate sign in":"Explore the workspace"} <ArrowRight size={17} />
         </a>
       </main>
       <Footer />

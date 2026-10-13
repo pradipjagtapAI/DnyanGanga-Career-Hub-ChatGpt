@@ -171,3 +171,5 @@ The current conditional planning scenario is about USD 150 / 870 / 7,950 monthly
 
 
 See [sole administrator setup and verification](docs/admin-login-setup.md) for the new authentication boundary, additive migration, server configuration and rollout checks. Older version-6 handover documents describe the previous native-login implementation.
+
+Candidate registration and Google/Gmail, LinkedIn and approved Indeed sign-in setup: [candidate signup guide](docs/candidate-signup-setup.md). Naukri identity access remains unconfirmed. Production candidate signup remains unavailable until protected authentication configuration and a verification sender or approved social provider are installed.

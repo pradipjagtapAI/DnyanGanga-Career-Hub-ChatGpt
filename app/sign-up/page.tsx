@@ -1,2 +1,3 @@
-import { redirect } from "next/navigation";
-export default function SignInAlias() { redirect("/admin/login?return_to=%2Fdashboard"); }
+import { AccountPage } from "../account-page";
+export const dynamic = "force-dynamic";
+export default function Page() { return <AccountPage mode="signup" path="/sign-up" />; }

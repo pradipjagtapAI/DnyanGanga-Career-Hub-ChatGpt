@@ -2213,11 +2213,11 @@ export default function CareerWorkspace({
                         <div>
                           <b>Sign-in & recovery</b>
                           <p>
-                            Administrator email/password and authenticator sign-in. Separate
-                            email/password recovery is unavailable.
+                            Candidate sign-in is separate from administrator access. Use the
+                            account recovery page for a candidate password reset.
                           </p>
                         </div>
-                        <Pill tone="gray">Administrator only</Pill>
+                        <a className="text-link" href="/forgot-password">Candidate recovery</a>
                       </div>
                       <div className="settings-row danger-row">
                         <div>

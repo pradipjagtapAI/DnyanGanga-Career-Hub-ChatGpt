@@ -243,3 +243,29 @@ export const adminThrottle = sqliteTable("career_admin_throttle", {
 export const adminSecurityEvents = sqliteTable("career_admin_security_events", {
   id:text("id").primaryKey(),action:text("action").notNull(),actorId:text("actor_id"),outcome:text("outcome").notNull(),createdAt:text("created_at").notNull(),
 });
+
+// Candidate credentials and OAuth identities are isolated from administrators.
+export const candidateUsers = sqliteTable("career_candidate_users", {
+  id:text("id").primaryKey(),name:text("name").notNull(),email:text("email").notNull(),emailVerified:integer("email_verified").notNull().default(0),image:text("image"),createdAt:text("created_at").notNull(),updatedAt:text("updated_at").notNull(),
+},t=>[uniqueIndex("candidate_email_unique").on(t.email)]);
+export const candidateSessions = sqliteTable("career_candidate_sessions", {
+  id:text("id").primaryKey(),userId:text("user_id").notNull().references(()=>candidateUsers.id,{onDelete:"cascade"}),token:text("token").notNull(),expiresAt:text("expires_at").notNull(),createdAt:text("created_at").notNull(),updatedAt:text("updated_at").notNull(),ipAddress:text("ip_address"),userAgent:text("user_agent"),
+},t=>[uniqueIndex("candidate_session_token_unique").on(t.token),index("candidate_session_owner").on(t.userId)]);
+export const candidateAccounts = sqliteTable("career_candidate_accounts", {
+  id:text("id").primaryKey(),userId:text("user_id").notNull().references(()=>candidateUsers.id,{onDelete:"cascade"}),accountId:text("account_id").notNull(),providerId:text("provider_id").notNull(),accessToken:text("access_token"),refreshToken:text("refresh_token"),idToken:text("id_token"),accessTokenExpiresAt:text("access_token_expires_at"),refreshTokenExpiresAt:text("refresh_token_expires_at"),scope:text("scope"),password:text("password"),createdAt:text("created_at").notNull(),updatedAt:text("updated_at").notNull(),
+},t=>[index("candidate_account_owner").on(t.userId),uniqueIndex("candidate_account_provider_unique").on(t.providerId,t.accountId)]);
+export const candidateVerifications = sqliteTable("career_candidate_verifications", {
+  id:text("id").primaryKey(),identifier:text("identifier").notNull(),value:text("value").notNull(),expiresAt:text("expires_at").notNull(),createdAt:text("created_at").notNull(),updatedAt:text("updated_at").notNull(),
+},t=>[index("candidate_verification_identifier").on(t.identifier)]);
+export const candidateLinkTokens = sqliteTable("career_candidate_link_tokens", {
+  hash:text("hash").primaryKey(),purpose:text("purpose").notNull(),userId:text("user_id").references(()=>candidateUsers.id,{onDelete:"cascade"}),expiresAt:integer("expires_at").notNull(),consumedAt:integer("consumed_at"),
+});
+export const candidateThrottle = sqliteTable("career_candidate_throttle", {
+  key:text("key").primaryKey(),windowStart:integer("window_start").notNull(),count:integer("count").notNull(),
+});
+export const candidateSecurityEvents = sqliteTable("career_candidate_security_events", {
+  id:text("id").primaryKey(),action:text("action").notNull(),actorId:text("actor_id"),outcome:text("outcome").notNull(),createdAt:text("created_at").notNull(),
+});
+export const candidateSecurityState = sqliteTable("career_candidate_security_state", {
+  userId:text("user_id").primaryKey().references(()=>candidateUsers.id,{onDelete:"cascade"}),recoveryPending:integer("recovery_pending").notNull().default(0),resetNonce:text("reset_nonce"),resetStartedAt:integer("reset_started_at").notNull().default(0),
+});

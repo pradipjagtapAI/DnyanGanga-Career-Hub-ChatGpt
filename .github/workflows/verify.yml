@@ -46,6 +46,8 @@ jobs:
         run: npm test
       - name: Run the isolated native D1 administrator workflow
         run: npm run test:admin:worker
+      - name: Run the isolated native D1 candidate workflow
+        run: npm run test:candidates:worker
       - name: Typecheck
         run: npm run typecheck
       - name: Lint the reviewed application modules only
@@ -61,6 +63,10 @@ jobs:
           app/admin/ownership/page.tsx app/dashboard/page.tsx app/logout/page.tsx
           app/login/page.tsx app/sign-up/page.tsx
           'app/api/admin/[...path]/route.ts'
+          lib/career-candidate-auth.ts lib/career-auth-realm.ts tests/candidate-auth.test.mjs
+          tests/candidate-worker-smoke.mjs tests/candidate-http-smoke.mjs
+          app/ui/account.tsx app/account-page.tsx app/forgot-password/page.tsx
+          app/reset-password/page.tsx app/verify-email/page.tsx 'app/api/account/[...path]/route.ts'
       - name: Build the current Worker application (no deployment)
         run: npm run build
       - name: Check tracked source and built browser assets for known secret patterns

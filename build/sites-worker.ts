@@ -35,7 +35,9 @@ export default {
     }
     secured.headers.set('X-Content-Type-Options', 'nosniff');
     secured.headers.set('X-Frame-Options', 'DENY');
-    secured.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+    const accountPath = new URL(request.url).pathname;
+    const tokenRoute = ['/verify-email', '/reset-password'].includes(accountPath) || accountPath.startsWith('/api/account/');
+    secured.headers.set('Referrer-Policy', tokenRoute ? 'no-referrer' : 'strict-origin-when-cross-origin');
     secured.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=()');
     secured.headers.set('Content-Security-Policy', `default-src 'self'; script-src 'self'${nonce ? ` 'nonce-${nonce}'` : ''}; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data: blob:; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'`);
     const url = new URL(request.url);

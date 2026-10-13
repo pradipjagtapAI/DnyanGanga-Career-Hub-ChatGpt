@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import "./admin.css";
+import "./account.css";
 export const metadata: Metadata = {
   title: "DnyanGanga Career Hub | Your AI-Powered Career Growth Platform",
   description:
