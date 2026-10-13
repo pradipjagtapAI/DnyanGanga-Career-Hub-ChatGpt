@@ -41,6 +41,9 @@ npm run test:admin:worker
 npm run typecheck
 npm run build
 npm audit --omit=dev --audit-level=low
+python -B tests/admin_hosted_access.py
+# After confirming the approved public hosting perimeter:
+python -B tests/admin_hosted_access.py --execute
 ```
 
 The administrator suite executes the actual Better Auth implementation against SQLite through its native D1 dialect. The workerd smoke test executes the implementation with an actual isolated local D1 binding. Both use synthetic identities and credentials; neither proves hosted identity, TLS, production password-hash CPU allowance or a completed live setup. Hosted acceptance remains a separate recorded check.
@@ -57,4 +60,27 @@ Monitor failed sign-ins, rejected MFA, throttling, unfinished bootstrap and unex
 
 ## Activation status
 
-The new code and archive are prepared; the prior working website stays live until protected secret configuration and owner provisioning can be completed. No real administrator password has been created. Automatic approval review blocked returning a generated authentication secret through tool output; no key was exposed or written into source. Do not replace this with credential-derived keys, a fixed test password or a weaker signing secret. Configure a genuinely random independent key through the protected server-setting workflow before activation.
+On 13 October 2026, saved version 7 (source `c957b27ac46bb02cee3ab1153b722bc60d50f95f`) deployed successfully on the existing Site and storage bindings. Native environment revision 4 contains the independent random authentication key, administrator email and exact verified legacy ownership mapping as masked server settings. No real credentials are present in source, browser assets or the metadata-only verification receipts.
+
+The human owner completed password creation and authenticator enrollment directly in the website. Browser acceptance opened the fresh-MFA protected service panel and the preserved career workspace. Visible profile completion remained 14%, with the same existing zero-record counts. This confirms the observed workspace continuity; no private resume/profile export or full-record comparison was performed.
+
+After those checks and explicit owner approval, native audience revision 2 made the landing/login pages public. The application workspace continues to require the independent administrator session and MFA. The temporary ownership route is disabled. The original site alias redirects administrator sign-in to `https://dolphincreation.com/admin/login`; host-only cookies are not shared across domains. Platform-owned native authentication routes can remain, but do not grant career-record access.
+
+Thirty-four live anonymous checks passed with normal DNS and verified TLS. They included private state, export, original/generated document and application-package downloads, empty uploads, synthetic cookies, spoofed native identity headers, origin/action-header rejection, disabled setup/internal-auth routes, canonical routing and unsigned callbacks. Each checked response retained no-store, restricted CORS and the tested security headers. The test stores metadata and safe error codes only; it stops immediately if a private endpoint returns 2xx. Running without `--execute` prints the plan and makes no requests.
+
+| Control | Evidence/status |
+| --- | --- |
+| Password and required authenticator setup | Implemented; human hosted setup and fresh admin panel verified |
+| Sole configured administrator and exact workspace mapping | Implemented; private native-owner proof, immutable mapping and observed workspace continuity verified |
+| Anonymous, forged-cookie and spoofed-native-header denial | Implemented and tested in 34 hosted probes |
+| Private downloads and exports | Anonymous denial tested with synthetic IDs; real file ownership covered by local tests, not a hosted two-account comparison |
+| Closed public bootstrap and disabled ownership screen | Implemented; anonymous status/setup route checked after bootstrap |
+| CSRF origin and action header | Local tests and unauthenticated hosted rejection tested; live authenticated forged-action check untested |
+| Session expiry, logout, revocation and TOTP replay | Actual library/D1 local coverage; hosted logout followed by a new password/MFA login untested |
+| Secrets | Native secret settings masked; source/browser heuristic passed; no credential values in evidence |
+| Recovery, restore, load/CPU envelope | Manual verified recovery required; automatic reset/backup-code login disabled; restore/load envelope not tested. Human hosted setup demonstrates the observed hashing path succeeded |
+| Live jobs, AI, email/WhatsApp and payments | Still disabled or unconfigured; no provider sends or payment changes claimed |
+
+Selected local verification passed 273 tests and nine workerd groups. GitHub Actions run `38416322545` passed for the original application source. The full dependency audit still has eight high development-tool findings from the existing baseline; production dependency audit has zero findings. These checks do not certify ASVS compliance or approve every original launch requirement.
+
+Local ignored evidence: `outputs/admin-hosted-access-2026-10-13.json`, `outputs/admin-saved-version-2026-10-13.json` and the previous local test logs. The repeatable network test is `tests/admin_hosted_access.py` and needs Python 3. Use only this owned deployment; do not turn it into an unrestricted target scanner.
