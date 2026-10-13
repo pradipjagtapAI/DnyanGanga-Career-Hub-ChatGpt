@@ -1,0 +1,74 @@
+name: Verify private career platform
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Offline checks and Worker build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      CI: 'true'
+      CLOUDFLARE_CF_FETCH_ENABLED: 'false'
+      WRANGLER_SEND_METRICS: 'false'
+      WRANGLER_WRITE_LOGS: 'false'
+      CAREER_SECRET_RESULTS: outputs/ci/secret-heuristic.json
+    steps:
+      - name: Check out source without retaining a credential
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Use the tested Node 24 LTS runtime
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24.16.0'
+          check-latest: false
+          package-manager-cache: false
+      - name: Check source prerequisites (not deployment readiness)
+        run: |
+          node scripts/check-release-readiness.mjs --self-test
+          node scripts/check-release-readiness.mjs --source-only
+      - name: Install the committed lockfile using the portable helper
+        run: npm run install:ci
+      - name: Run actual offline storage and policy suites
+        run: npm test
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Lint the reviewed application modules only
+        run: >-
+          node node_modules/eslint/bin/eslint.js
+          lib/career-platform-store.ts lib/career-intelligence.ts lib/career-resume-tools.ts
+          app/ui/career-platform-tools.tsx app/ui/resume-toolkit.tsx
+          app/ui/agent-command-center.tsx app/ui/career-view-types.ts
+          'app/api/career/[...path]/route.ts'
+          scripts/check-release-readiness.mjs
+      - name: Build the current Worker application (no deployment)
+        run: npm run build
+      - name: Check tracked source and built browser assets for known secret patterns
+        run: |
+          mkdir -p outputs/ci
+          node tests/release-secrets.mjs
+      - name: Reject reported production dependency vulnerabilities
+        run: npm audit --omit=dev --audit-level=low
+      - name: Report the complete dependency audit separately
+        if: always()
+        run: |
+          mkdir -p outputs/ci
+          if npm audit --json > outputs/ci/full-audit.json; then
+            echo 'The complete dependency audit reported no vulnerabilities.'
+          else
+            node --input-type=module -e "import fs from 'node:fs'; const a=JSON.parse(fs.readFileSync('outputs/ci/full-audit.json','utf8')); console.log(JSON.stringify({scope:'complete dependency audit; diagnostic only',counts:a.metadata?.vulnerabilities??null,registryError:!!a.error}));"
+            echo 'Review the complete audit locally; this diagnostic does not mark a known finding repaired.'
+          fi
