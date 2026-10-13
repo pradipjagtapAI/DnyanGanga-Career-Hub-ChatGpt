@@ -21,10 +21,10 @@ export function Brand() {
     <a className="brand" href="/" aria-label="DnyanGanga Career Hub home">
       <span className="brand-art">
         <img
-          src="/dnyanganga-logo.png?v=2"
+          src="/dnyanganga-logo.png?v=3"
           alt="DnyanGanga Career Hub"
           width="1536"
-          height="1024"
+          height="864"
           decoding="async"
         />
       </span>

@@ -17,7 +17,7 @@ label{display:flex;flex-direction:column;gap:7px;font-size:12px;font-weight:500;
 .public-header{height:110px}
 .brand{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;width:252px;flex-shrink:0;letter-spacing:normal;line-height:1.3}
 .brand-art{position:relative;display:block;width:100%;height:auto;aspect-ratio:252/68;overflow:hidden;border-radius:4px}
-.brand-art img{position:absolute;display:block;width:104.7619%;height:auto;max-width:none;left:-2.7778%;top:-75%}
+.brand-art img{position:absolute;display:block;width:100%;height:auto;max-width:none;left:0;top:-50%}
 .brand-tagline{display:block;width:100%;font-family:var(--sans);font-size:11px;font-weight:550;line-height:1.5;text-align:center;color:#475569;letter-spacing:0;white-space:normal}
 .sidebar .brand{width:210px;padding:0;gap:7px}
 .sidebar .brand-tagline{font-size:9.5px;max-width:202px;line-height:1.5}
