@@ -1,6 +1,8 @@
 # DnyanGanga Career Hub
 
-**Your AI-Powered Career Growth Platform**
+**Your AI-Powered Career Growth Platform
+
+Domain setup on 13 October 2026: Hostinger DNS connects `https://dolphincreation.com` to the same owner-private platform; email records and existing data are preserved. [Actual domain results and remaining browser checks](docs/dolphincreation-domain-setup.md), [release pipeline](docs/hosting-and-domain-plan.md), and [test evidence](docs/pipeline-test-results.md). GitHub verification runs on pushes; production publishing is a separate native Sites action.**
 
 This update extends the existing website, source repository, private Sites URL, managed sign-in, D1 database and R2 binding. It preserves the supplied green/orange logo, light design, original routes and existing records. The public workflows of Resodro, LoopCV and Simplify informed feature selection; their content, assets and outcome claims were not copied. Review and integration evidence: [connections guide](docs/integrations-update.md).
 

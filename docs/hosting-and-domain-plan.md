@@ -1,6 +1,6 @@
 # Test → Git → GitHub → Hostinger → Domain → Update
 
-Prepared 13 October 2026 for the existing local repository `E:/Websites/Dnyanganga Career Hub/ChatGPT`. This document records the selected hosting route and verified progress. GitHub is connected; the domain binding is pending DNS/TLS activation.
+Prepared 13 October 2026 for the existing local repository `E:/Websites/Dnyanganga Career Hub/ChatGPT`. This document records the selected hosting route and verified progress. GitHub is connected; Hostinger DNS and native domain/TLS are active. Authenticated new-host journeys remain unverified while this resolver has the old address cached.
 
 ## Current status
 
@@ -9,11 +9,11 @@ Prepared 13 October 2026 for the existing local repository `E:/Websites/Dnyangan
 | Test | Fresh local 250 server tests passed; type check, focused lint, Worker build and production dependency audit passed | Hosted identity, provider, restore and load checks remain separate |
 | Git | Existing independent repository and six imported revisions preserved; preparation committed as `0de8bd8` | Local Git history and receipt preserved |
 | GitHub | Source pushed to the user-selected public repository; actual verification run succeeded | Branch protection remains external setup |
-| Hostinger | User selected Hostinger domain/DNS with existing platform hosting; no hosting migration | Hostinger browser sign-in for DNS settings |
-| Domain | `dolphincreation.com` attached to the same Site; pending DNS/TLS | Authoritative DNS record update and fresh domain checks |
+| Hostinger | User selected Hostinger domain/DNS with existing platform hosting; no hosting migration; DNS records applied and exported | Future DNS access remains through the owner account |
+| Domain | `dolphincreation.com` attached to the same Site; DNS/TLS Active; 9 post-deployment anonymous perimeter checks passed | Authenticated new-host sign-in, owned data and CSRF acceptance after DNS cache refresh |
 | Update | Test/review/version/deploy/verify/rollback procedure prepared | Correct target-specific deployment, never an assumed automatic push |
 
-The existing private website remains `https://dolphin-career-studio.livelymelon2.chatgpt.site`, version 6, same project `appgprj_6acba9a286e8819187fe91a333c9f53f`, one owner and no groups. No existing live deployment or DNS record was changed in preparation.
+The existing private website remains `https://dolphin-career-studio.livelymelon2.chatgpt.site`, version 6, same project `appgprj_6acba9a286e8819187fe91a333c9f53f`, one owner and no groups. The original URL and owner-private audience remain. Apex DNS now targets the same Site; saved version 6 was redeployed with only public-origin environment revision 2. No candidate records, files or authentication system were migrated.
 
 ## Choose the hosting route
 
@@ -45,7 +45,7 @@ Use the new workflow in `.github/workflows/verify.yml`. It validates source and 
 6. Update server-side `CAREER_PUBLIC_ORIGIN` and applicable approved callback/relay/provider URLs after the new host works. Use native server configuration and keep provider flags disabled until their own acceptance checks. Inspect old and new host behavior explicitly; do not assume identical cookie/origin behavior.
 7. Keep the original URL and saved Site version available. Roll back only the new web/validation records and canonical configuration if verification fails, using the recorded original values. Do not touch mail or delete stored candidate data.
 
-The same-Site apex connection has now been registered. Its issued status is pending and no DNS/TLS activation is claimed. Exact issued records, cutover tests and rollback are in `dolphincreation-domain-setup.md`. No DNS records have been changed.
+The same-Site apex connection is Active with Active TLS. Exact issued DNS values were applied; zone comparison preserved email and unrelated records. Public-origin revision 2 was deployed successfully. Exact records, actual tests, remaining authenticated checks and rollback are in `dolphincreation-domain-setup.md`.
 
 ## Updates after setup
 
@@ -59,4 +59,4 @@ Before promoting either target, create/rehearse an encrypted backup, keep outbou
 
 Fresh production dependency audit reports zero findings. The full audit still reports eight high development/build/lint findings propagated from the unpatched braces advisory; braces latest remains 3.0.3 at this check. Existing full-repository lint errors remain. The existing handover lists all unconfigured providers and unfinished voice/OAuth/admin/sharing/deletion capabilities. Keep the release private; no broad launch, new paid plan or legal/security certification is implied.
 
-See `release-workflow.md`, `platform-handover.md` and `platform-test-results.md` for implementation details, existing controls and historical test evidence. Fresh pipeline logs/audits are in ignored `outputs/pipeline-*-2026-10-13.*`. GitHub-hosted CI succeeded for `0de8bd8` in run `38375858560`. Hostinger DNS changes, new-domain authenticated tests, backup restoration and production load tests remain unperformed. GitHub checks are verification, not an automatic deployment or security certification.
+See `release-workflow.md`, `platform-handover.md` and `platform-test-results.md` for implementation details, existing controls and historical test evidence. Fresh pipeline logs/audits are in ignored `outputs/pipeline-*-2026-10-13.*`. GitHub-hosted CI succeeded for `0de8bd8` in run `38375858560`. Hostinger DNS changes and anonymous native perimeter checks are complete. New-domain authenticated journeys, backup restoration and production load tests remain unperformed. GitHub checks are verification, not an automatic deployment or security certification.

@@ -18,7 +18,7 @@ Observed on 13 October 2026 in `E:/Websites/Dnyanganga Career Hub/ChatGPT`, usin
 | Readiness script syntax/lint | Exit 0 | `node --check` and focused ESLint |
 | Local workflow YAML/policy review | Passed | One verification job, 11 steps, pinned official action commits, Node 24.16.0, read-only token, no retained credential/deployment secrets/deploy job |
 | Default release gate | Expected nonzero while actual deployment evidence is absent | Blocks unsafe release; never manufactures evidence or deploys |
-| Existing hosted Site inspection | Same version 6 / owner-private; apex binding now pending | Domain binding added later; no hosted user records modified |
+| Existing hosted Site inspection | Same version 6 / owner-private; apex binding and TLS now Active | Domain binding added later; no hosted user records modified |
 | Actual GitHub verification | Completed successfully for `0de8bd8` | Run `38375858560`; all verification steps passed; full audit is a diagnostic |
 
 The eight new release-preparation application lint targets are `lib/career-platform-store.ts`, `lib/career-intelligence.ts`, `lib/career-resume-tools.ts`, `app/ui/career-platform-tools.tsx`, `app/ui/resume-toolkit.tsx`, `app/ui/agent-command-center.tsx`, `app/ui/career-view-types.ts` and `app/api/career/[...path]/route.ts`. The new readiness script was linted separately. Historical full lint still has its documented legacy findings.
@@ -44,6 +44,10 @@ Use the README's direct Node/npm CLI fallback on this host if its npm launcher f
 
 ## Work not performed
 
-The source was later pushed to the selected GitHub repository and actual Actions verification succeeded. The owned apex dolphincreation.com was registered on the same Site and remains pending DNS/TLS. No Hostinger DNS records or hosting migration have been changed; browser sign-in remains required. The existing Site remains available with its private audience. Live providers, scheduled workers, hosted multi-user/session/cookie tests, backup restore, load testing and independent security review remain subject to the existing handover requirements.
+The source was later pushed to the selected GitHub repository and actual Actions verification succeeded. The owned apex dolphincreation.com was registered on the same Site and is now Active with Active TLS. Hostinger DNS was updated using the exact issued records; mail and unrelated records were preserved. No hosting/data/auth migration happened. The existing Site remains available with its private audience. Live providers, scheduled workers, hosted multi-user/session/cookie tests, backup restore, load testing and independent security review remain subject to the existing handover requirements.
 
-The verification CI intentionally has no automatic deployment. The user selected Hostinger domain/DNS plus the existing platform, so no Hostinger application-hosting plan is needed. Hostinger sign-in and domain acceptance checks are still needed. See `hosting-and-domain-plan.md` and `release-workflow.md` for the concrete next steps.
+The verification CI intentionally has no automatic deployment. The user selected Hostinger domain/DNS plus the existing platform, so no Hostinger application-hosting plan is needed. Hostinger DNS setup and public anonymous domain checks are complete; authenticated new-host journeys remain needed once the cached old address refreshes. See `hosting-and-domain-plan.md` and `release-workflow.md` for the concrete next steps.
+
+## Domain update results
+
+Hostinger before/after DNS export comparison passed; public DNS returns both exact A targets and verification TXT values. Native domain and TLS states are Active. Nine post-deployment anonymous native access checks passed with normal certificate validation: private root/API/export/file gates, two identity-header spoof probes, an anonymous mutation and a cross-origin read. These native 401 responses do not prove authenticated application CSRF or cross-user ownership. Public-origin environment revision 2 was applied by a successful native redeployment of unchanged saved version 6. This resolver still cached the old address, so authenticated browser journeys were not completed. See `dolphincreation-domain-setup.md` and ignored `outputs/domain-*.json` for actual results and scope.
