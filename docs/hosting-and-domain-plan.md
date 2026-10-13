@@ -1,23 +1,23 @@
 # Test → Git → GitHub → Hostinger → Domain → Update
 
-Prepared 13 October 2026 for the existing local repository `E:/Websites/Dnyanganga Career Hub/ChatGPT`. This document is a deployment plan, not evidence that GitHub, Hostinger or a domain has been connected.
+Prepared 13 October 2026 for the existing local repository `E:/Websites/Dnyanganga Career Hub/ChatGPT`. This document records the selected hosting route and verified progress. GitHub is connected; the domain binding is pending DNS/TLS activation.
 
 ## Current status
 
 | Stage | Verified status | Next dependency |
 | --- | --- | --- |
 | Test | Fresh local 250 server tests passed; type check, focused lint, Worker build and production dependency audit passed | Hosted identity, provider, restore and load checks remain separate |
-| Git | Existing independent repository and six imported revisions preserved; release preparation is being versioned locally | Final preparation commit recorded in ignored outputs |
-| GitHub | Private repository verification workflow prepared; no remote/account is connected | User's account/repository choice and authenticated connection |
-| Hostinger | Official current plan support researched; no account configuration changed | User's plan, account access and selected hosting route |
-| Domain | Native same-Site custom-domain capability available; existing Site has zero custom domains | Exact user-owned hostname and authoritative DNS access |
+| Git | Existing independent repository and six imported revisions preserved; preparation committed as `0de8bd8` | Local Git history and receipt preserved |
+| GitHub | Source pushed to the user-selected public repository; actual verification run succeeded | Branch protection remains external setup |
+| Hostinger | User selected Hostinger domain/DNS with existing platform hosting; no hosting migration | Hostinger browser sign-in for DNS settings |
+| Domain | `dolphincreation.com` attached to the same Site; pending DNS/TLS | Authoritative DNS record update and fresh domain checks |
 | Update | Test/review/version/deploy/verify/rollback procedure prepared | Correct target-specific deployment, never an assumed automatic push |
 
 The existing private website remains `https://dolphin-career-studio.livelymelon2.chatgpt.site`, version 6, same project `appgprj_6acba9a286e8819187fe91a333c9f53f`, one owner and no groups. No existing live deployment or DNS record was changed in preparation.
 
 ## Choose the hosting route
 
-**Recommended smallest change: Hostinger domain/DNS + existing platform hosting.** Keep the same Sites application, managed sign-in, D1 database and private R2 binding. Use the supported native custom-domain connection. This is honestly Hostinger domain management, not Hostinger application-server hosting. Do not move or recreate accounts merely to give the platform a new hostname.
+**Selected route: Hostinger domain/DNS + existing platform hosting.** Keep the same Sites application, managed sign-in, D1 database and private R2 binding. Use the supported native custom-domain connection. This is honestly Hostinger domain management, not Hostinger application-server hosting. Do not move or recreate accounts merely to give the platform a new hostname.
 
 **Full Hostinger application hosting:** requires a staged backend/authentication/storage migration first. Hostinger currently supports managed Node apps on Business Web Hosting and its Cloud plans, GitHub/ZIP deployment and Node 22/24. VPS provides control for custom processes and private document processing. These available Node runtimes do not make the current Worker application portable by themselves. [Official managed deployment](https://www.hostinger.com/support/how-to-deploy-a-nodejs-website-in-hostinger/), [hosting options](https://www.hostinger.com/support/node-js-hosting-options-at-hostinger/), [VPS/CloudPanel](https://www.hostinger.com/support/9553137-how-to-set-up-a-node-js-application-using-hostinger-cloudpanel/).
 
@@ -29,7 +29,7 @@ The source copy contains schema and code, not live hosted records, original resu
 
 ## GitHub preparation and access
 
-Use a private repository under the user-selected GitHub account. Do not commit environment files, API tokens, private uploads, databases, caches or release archives. The copied `outputs/` folder remains ignored. The existing source history has been reviewed for real credentials; secret-format scans are heuristic and do not replace provider key controls.
+The user-selected repository is `https://github.com/pradipjagtapAI/DnyanGanga-Career-Hub-ChatGpt` and is publicly readable. It was empty before the non-force push. Source and all prior revisions are uploaded; no private runtime files or hosted user data were uploaded. Repository visibility was not changed. Do not commit environment files, API tokens, private uploads, databases, caches or release archives. The copied `outputs/` folder remains ignored. The existing source history has been reviewed for real credentials; secret-format scans are heuristic and do not replace provider key controls.
 
 Connect GitHub using the suggested integration or an official authenticated client. No password, access token, recovery code or OTP should be pasted into chat or source. If the target repository already has content, fetch and reconcile it; do not force-push or overwrite its unrelated history. Keep collaborators and deployment-app access limited to this repository. Hostinger GitHub app authorization is a separate access decision; avoid authorizing all repositories unnecessarily.
 
@@ -45,11 +45,11 @@ Use the new workflow in `.github/workflows/verify.yml`. It validates source and 
 6. Update server-side `CAREER_PUBLIC_ORIGIN` and applicable approved callback/relay/provider URLs after the new host works. Use native server configuration and keep provider flags disabled until their own acceptance checks. Inspect old and new host behavior explicitly; do not assume identical cookie/origin behavior.
 7. Keep the original URL and saved Site version available. Roll back only the new web/validation records and canonical configuration if verification fails, using the recorded original values. Do not touch mail or delete stored candidate data.
 
-No custom domain has been registered by this preparation, and no DNS/TLS activation result is claimed.
+The same-Site apex connection has now been registered. Its issued status is pending and no DNS/TLS activation is claimed. Exact issued records, cutover tests and rollback are in `dolphincreation-domain-setup.md`. No DNS records have been changed.
 
 ## Updates after setup
 
-For the recommended route: edit locally → test → review Git diff → commit → push the private GitHub branch → confirm CI → publish the exact approved source through the existing Sites source/version workflow → verify the domain and private journeys. A GitHub push alone does not deploy Sites. Keep the user-owned GitHub remote separate from the native Sites source destination; never force-rewrite either.
+For the recommended route: edit locally → test → review Git diff → commit → push the reviewed GitHub branch → confirm CI → publish the exact approved source through the existing Sites source/version workflow → verify the domain and private journeys. A GitHub push alone does not deploy Sites. Keep the user-owned GitHub remote separate from the native Sites source destination; never force-rewrite either.
 
 For a completed Hostinger port: edit → test → reviewed release-branch commit → GitHub CI → deploy to Hostinger staging → verify sign-in, owned data, private files and workers → promote the reviewed production revision → verify domain/TLS → monitor. Hostinger documents automatic deployments on push: do not connect an unrestricted development branch directly to live production. Enable this only after compatible runtime, safeguards and release-branch checks exist.
 
@@ -59,4 +59,4 @@ Before promoting either target, create/rehearse an encrypted backup, keep outbou
 
 Fresh production dependency audit reports zero findings. The full audit still reports eight high development/build/lint findings propagated from the unpatched braces advisory; braces latest remains 3.0.3 at this check. Existing full-repository lint errors remain. The existing handover lists all unconfigured providers and unfinished voice/OAuth/admin/sharing/deletion capabilities. Keep the release private; no broad launch, new paid plan or legal/security certification is implied.
 
-See `release-workflow.md`, `platform-handover.md` and `platform-test-results.md` for implementation details, existing controls and historical test evidence. Fresh pipeline logs/audits are in ignored `outputs/pipeline-*-2026-10-13.*`. GitHub-hosted CI, Hostinger execution, new-domain authenticated tests, backup restoration and production load tests remain unperformed until access and setup are supplied.
+See `release-workflow.md`, `platform-handover.md` and `platform-test-results.md` for implementation details, existing controls and historical test evidence. Fresh pipeline logs/audits are in ignored `outputs/pipeline-*-2026-10-13.*`. GitHub-hosted CI succeeded for `0de8bd8` in run `38375858560`. Hostinger DNS changes, new-domain authenticated tests, backup restoration and production load tests remain unperformed. GitHub checks are verification, not an automatic deployment or security certification.
